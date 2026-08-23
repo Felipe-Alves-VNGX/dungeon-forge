@@ -46,7 +46,7 @@ export function placeRooms(params, floor, rng) {
 
   // Snap to integer cell grid, centered at spawnRadius offset so all
   // coordinates end up non-negative.
-  const offset = params.spawnRadius + params.sizeMax;
+  const offset = params.spawnRadius + params.sizeMax / 2;
   const boxed = candidates.map((c) => {
     const x = Math.round(c.cx + offset - c.w / 2);
     const y = Math.round(c.cy + offset - c.h / 2);
