@@ -108,10 +108,10 @@ export function buildKey(rooms, adjacency, entranceRoomId, keyConfig) {
   const order = bfsOrder(rooms, adjacency, entranceRoomId);
   const roomsById = new Map(rooms.map((r) => [r.id, r]));
 
-  const numberedIds = order.filter((id) => {
-    const r = roomsById.get(id);
-    return r.role !== 'junction' || keyConfig.numberJunctions || true; // every Room is numbered (SPEC §5.11 "toda Room, sempre")
-  });
+  // Every Room is always numbered (SPEC §5.11 "toda Room, sempre"). `numberJunctions`
+  // refers to numbering standalone corridor junctions (Areas with roomId: null),
+  // which this stage doesn't produce yet — so it's correctly unused here, not a bug.
+  const numberedIds = order;
 
   // Per-floor numbering: each floor gets its own counter, incremented as
   // numberedIds is walked in BFS order. (A single global counter would
@@ -154,7 +154,7 @@ export function buildKey(rooms, adjacency, entranceRoomId, keyConfig) {
   const rolesPresent = new Set(rooms.map((r) => r.role));
   const legend = Object.entries(LEGEND_BY_ROLE)
     .filter(([role]) => rolesPresent.has(role))
-    .map(([, symbol]) => symbol);
+    .map(([, symbol]) => ({ ...symbol }));
   legend.push({ kind: 'area', caption: 'Área sem papel especial' });
 
   const byLabel = Object.fromEntries(areas.map((a) => [a.label, a.id]));
