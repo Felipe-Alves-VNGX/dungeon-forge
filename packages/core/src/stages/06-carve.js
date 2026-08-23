@@ -140,3 +140,37 @@ export function carveToPoint(grid, width, height, floor, room, point, costs) {
   if (!path) return;
   stampPath(grid, width, height, floor, path);
 }
+
+function rectTouchesHallway(grid, width, height, floor, cell) {
+  for (let y = cell.y; y < cell.y + cell.h; y++) {
+    for (let x = cell.x; x < cell.x + cell.w; x++) {
+      if (!inBounds(x, y, floor, width, height, floor + 1)) continue;
+      if (getCell(grid, x, y, floor, width, height) === CELL.HALLWAY) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Converts residual (unpromoted) room-placement cells into HALLWAY wherever
+ * they touch a carved corridor, producing the irregular corridor widening
+ * described in SPEC.md §5.8 ("Engrossamento de corredor"). residualCells are
+ * not guaranteed to be in-bounds (see 01-place-rooms.js's doc comment); each
+ * cell is bounds-checked individually rather than clamped up front.
+ * @param {Uint8Array} grid
+ * @param {number} width @param {number} height @param {number} floor
+ * @param {{x:number,y:number,w:number,h:number}[]} residualCells
+ */
+export function thickenCorridors(grid, width, height, floor, residualCells) {
+  for (const cell of residualCells) {
+    if (!rectTouchesHallway(grid, width, height, floor, cell)) continue;
+    for (let y = cell.y; y < cell.y + cell.h; y++) {
+      for (let x = cell.x; x < cell.x + cell.w; x++) {
+        if (!inBounds(x, y, floor, width, height, floor + 1)) continue;
+        if (getCell(grid, x, y, floor, width, height) === CELL.EMPTY) {
+          setCell(grid, x, y, floor, width, height, CELL.HALLWAY);
+        }
+      }
+    }
+  }
+}

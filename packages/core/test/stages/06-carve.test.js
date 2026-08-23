@@ -1,7 +1,7 @@
 // packages/core/test/stages/06-carve.test.js
 import { describe, it, expect } from 'vitest';
 import { CELL, createGrid, setCell, getCell, cellIndex } from '../../src/grid.js';
-import { carve, cellCost, carveToPoint } from '../../src/stages/06-carve.js';
+import { carve, cellCost, carveToPoint, thickenCorridors } from '../../src/stages/06-carve.js';
 
 const COSTS = { newHallway: 10, reuseHallway: 1, throughRoom: 50, turn: 2 };
 
@@ -130,5 +130,43 @@ describe('carveToPoint', () => {
     carveToPoint(gridA, width, height, 0, r0, { x: 15, y: 15 }, COSTS);
     carveToPoint(gridB, width, height, 0, r0, { x: 15, y: 15 }, COSTS);
     expect(Array.from(gridA)).toEqual(Array.from(gridB));
+  });
+});
+
+describe('thickenCorridors', () => {
+  it('converts a residual cell to HALLWAY when it touches a carved corridor', () => {
+    const width = 10, height = 10;
+    const grid = createGrid(width, height, 1);
+    setCell(grid, 5, 5, 0, width, height, CELL.HALLWAY);
+    const residualCells = [{ x: 4, y: 4, w: 3, h: 3 }];
+    thickenCorridors(grid, width, height, 0, residualCells);
+    expect(getCell(grid, 4, 4, 0, width, height)).toBe(CELL.HALLWAY);
+    expect(getCell(grid, 6, 6, 0, width, height)).toBe(CELL.HALLWAY);
+  });
+
+  it('leaves a residual cell untouched when it does not touch a corridor', () => {
+    const width = 10, height = 10;
+    const grid = createGrid(width, height, 1);
+    const residualCells = [{ x: 0, y: 0, w: 2, h: 2 }];
+    thickenCorridors(grid, width, height, 0, residualCells);
+    expect(getCell(grid, 0, 0, 0, width, height)).toBe(CELL.EMPTY);
+  });
+
+  it('never overwrites a ROOM cell', () => {
+    const width = 10, height = 10;
+    const grid = createGrid(width, height, 1);
+    setCell(grid, 4, 4, 0, width, height, CELL.ROOM);
+    setCell(grid, 5, 5, 0, width, height, CELL.HALLWAY);
+    const residualCells = [{ x: 4, y: 4, w: 3, h: 3 }];
+    thickenCorridors(grid, width, height, 0, residualCells);
+    expect(getCell(grid, 4, 4, 0, width, height)).toBe(CELL.ROOM);
+  });
+
+  it('safely skips out-of-bounds residual cells instead of throwing', () => {
+    const width = 10, height = 10;
+    const grid = createGrid(width, height, 1);
+    setCell(grid, 9, 9, 0, width, height, CELL.HALLWAY);
+    const residualCells = [{ x: 8, y: 8, w: 5, h: 5 }];
+    expect(() => thickenCorridors(grid, width, height, 0, residualCells)).not.toThrow();
   });
 });
