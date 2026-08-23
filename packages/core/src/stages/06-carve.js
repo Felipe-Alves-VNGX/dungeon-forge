@@ -7,11 +7,17 @@ function roomBoundaryCell(room) {
   return { x: Math.round(room.cx), y: Math.round(room.cy) };
 }
 
-function cellCost(cellValue, costs) {
+export function cellCost(cellValue, costs) {
   switch (cellValue) {
     case CELL.EMPTY:
       return costs.newHallway;
     case CELL.HALLWAY:
+      return costs.reuseHallway;
+    case CELL.STAIR:
+      // A vertical-link footprint is walkable, same as an existing hallway
+      // (SPEC.md §5.8, "Arestas verticais: o A* vai até a célula de acesso
+      // do footprint do link, não atravessa" — reaching it must be cheap,
+      // exactly like reusing a corridor).
       return costs.reuseHallway;
     case CELL.ROOM:
       return costs.throughRoom;
@@ -83,6 +89,14 @@ function astar(grid, width, height, floor, start, goal, costs) {
   return null; // unreachable — caller decides how to handle (should not happen post-M2 given MST connectivity)
 }
 
+function stampPath(grid, width, height, floor, path) {
+  for (const node of path) {
+    if (getCell(grid, node.x, node.y, floor, width, height) === CELL.EMPTY) {
+      setCell(grid, node.x, node.y, floor, width, height, CELL.HALLWAY);
+    }
+  }
+}
+
 /**
  * @param {Uint8Array} grid
  * @param {number} width @param {number} height @param {number} floor
@@ -105,10 +119,24 @@ export function carve(grid, width, height, floor, rooms, edges, costs) {
     const path = astar(grid, width, height, floor, start, goal, costs);
     if (!path) continue;
 
-    for (const node of path) {
-      if (getCell(grid, node.x, node.y, floor, width, height) === CELL.EMPTY) {
-        setCell(grid, node.x, node.y, floor, width, height, CELL.HALLWAY);
-      }
-    }
+    stampPath(grid, width, height, floor, path);
   }
+}
+
+/**
+ * Carves a path from a room to an arbitrary point on the same floor — used
+ * to connect the nearest room to a chosen VerticalLink footprint (SPEC.md
+ * §5.8, "Arestas verticais").
+ * @param {Uint8Array} grid
+ * @param {number} width @param {number} height @param {number} floor
+ * @param {import('../types.js').Room} room
+ * @param {{x:number,y:number}} point
+ * @param {import('../types.js').CarveCosts} costs
+ */
+export function carveToPoint(grid, width, height, floor, room, point, costs) {
+  const start = roomBoundaryCell(room);
+  const goal = { x: Math.round(point.x), y: Math.round(point.y) };
+  const path = astar(grid, width, height, floor, start, goal, costs);
+  if (!path) return;
+  stampPath(grid, width, height, floor, path);
 }

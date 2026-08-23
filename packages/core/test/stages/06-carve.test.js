@@ -1,7 +1,7 @@
 // packages/core/test/stages/06-carve.test.js
 import { describe, it, expect } from 'vitest';
 import { CELL, createGrid, setCell, getCell, cellIndex } from '../../src/grid.js';
-import { carve } from '../../src/stages/06-carve.js';
+import { carve, cellCost, carveToPoint } from '../../src/stages/06-carve.js';
 
 const COSTS = { newHallway: 10, reuseHallway: 1, throughRoom: 50, turn: 2 };
 
@@ -83,5 +83,52 @@ describe('carve', () => {
     stampRoom(grid, r1, width, height);
     carve(grid, width, height, 0, [r0, r1], [{ a: 0, b: 1, weight: 1, kind: 'mst' }], COSTS);
     expect(grid.length).toBe(width * height);
+  });
+});
+
+describe('cellCost', () => {
+  it('costs a STAIR cell the same as reusing an existing hallway', () => {
+    expect(cellCost(CELL.STAIR, COSTS)).toBe(COSTS.reuseHallway);
+  });
+});
+
+describe('carve — CELL.STAIR handling', () => {
+  it('does not overwrite existing CELL.STAIR cells when carving through them', () => {
+    const width = 10, height = 2;
+    const grid = createGrid(width, height, 1);
+    const r0 = room(0, 0, 0, 2, 2);
+    const r1 = room(1, 8, 0, 2, 2);
+    stampRoom(grid, r0, width, height);
+    stampRoom(grid, r1, width, height);
+    setCell(grid, 4, 1, 0, width, height, CELL.STAIR);
+    setCell(grid, 5, 1, 0, width, height, CELL.STAIR);
+
+    carve(grid, width, height, 0, [r0, r1], [{ a: 0, b: 1, weight: 1, kind: 'mst' }], COSTS);
+
+    expect(getCell(grid, 4, 1, 0, width, height)).toBe(CELL.STAIR);
+    expect(getCell(grid, 5, 1, 0, width, height)).toBe(CELL.STAIR);
+  });
+});
+
+describe('carveToPoint', () => {
+  it('carves a path from a room to an arbitrary point on the same floor', () => {
+    const width = 20, height = 20;
+    const grid = createGrid(width, height, 1);
+    const r0 = room(0, 2, 2, 3, 3);
+    stampRoom(grid, r0, width, height);
+    carveToPoint(grid, width, height, 0, r0, { x: 15, y: 15 }, COSTS);
+    expect(getCell(grid, 15, 15, 0, width, height)).not.toBe(CELL.EMPTY);
+  });
+
+  it('is deterministic', () => {
+    const width = 20, height = 20;
+    const gridA = createGrid(width, height, 1);
+    const gridB = createGrid(width, height, 1);
+    const r0 = room(0, 2, 2, 3, 3);
+    stampRoom(gridA, r0, width, height);
+    stampRoom(gridB, r0, width, height);
+    carveToPoint(gridA, width, height, 0, r0, { x: 15, y: 15 }, COSTS);
+    carveToPoint(gridB, width, height, 0, r0, { x: 15, y: 15 }, COSTS);
+    expect(Array.from(gridA)).toEqual(Array.from(gridB));
   });
 });
