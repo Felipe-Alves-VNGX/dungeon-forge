@@ -1,0 +1,17 @@
+{
+  "name": "dungeon-forge",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "harness"
+  ],
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint packages harness --ext .js --no-error-on-unmatched-pattern"
+  },
+  "devDependencies": {
+    "eslint": "^9.9.0",
+    "vitest": "^2.0.0"
+  }
+}
