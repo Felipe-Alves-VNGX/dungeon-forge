@@ -3,7 +3,7 @@ export default [
     ignores: ['node_modules/', 'dist/', '.git/'],
   },
   {
-    files: ['packages/**/*.js', 'harness/**/*.js'],
+    files: ['**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
