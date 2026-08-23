@@ -16,11 +16,45 @@ const CONFIG = {
   key: { scheme: 'per-floor', numberJunctions: false, startAt: 1, padTo: 2, exitsInEntries: true },
 };
 
-describe('generateDungeon', () => {
-  it('throws a clear error for floors !== 1 (multi-floor is out of scope for this plan)', () => {
-    expect(() => generateDungeon({ ...CONFIG, floors: 2 })).toThrow(/floors/i);
-  });
+const MULTI_FLOOR_CONFIG = {
+  ...CONFIG,
+  seed: 'plan-m5-multi-floor',
+  floors: 3,
+  width: 40,
+  height: 40,
+  rooms: { ...CONFIG.rooms, count: 6, spawnRadius: 14 },
+};
 
+function isWalkable(v) {
+  return v === CELL.ROOM || v === CELL.HALLWAY || v === CELL.STAIR;
+}
+
+function floodFillWalkable(cells, width, height, floors) {
+  const size = width * height;
+  const start = cells.findIndex(isWalkable);
+  const seen = new Uint8Array(cells.length);
+  seen[start] = 1;
+  const stack = [start];
+  while (stack.length) {
+    const idx = stack.pop();
+    const z = Math.floor(idx / size);
+    const rem = idx % size;
+    const y = Math.floor(rem / width);
+    const x = rem % width;
+    for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+      const nx = x + dx, ny = y + dy, nz = z + dz;
+      if (nx < 0 || nx >= width || ny < 0 || ny >= height || nz < 0 || nz >= floors) continue;
+      const nIdx = nz * size + ny * width + nx;
+      if (!seen[nIdx] && isWalkable(cells[nIdx])) {
+        seen[nIdx] = 1;
+        stack.push(nIdx);
+      }
+    }
+  }
+  return seen;
+}
+
+describe('generateDungeon', () => {
   it('produces a Dungeon with rooms, walls, areas, and a markdown-able key', () => {
     const dungeon = generateDungeon(CONFIG);
     expect(dungeon.rooms.length).toBe(CONFIG.rooms.count);
@@ -39,28 +73,8 @@ describe('generateDungeon', () => {
 
   it('every room is reachable from every other room (single connected floor)', () => {
     const dungeon = generateDungeon(CONFIG);
-    const { cells, width, height } = dungeon;
-    const isWalkable = (v) => v === CELL.ROOM || v === CELL.HALLWAY;
-    const start = cells.findIndex(isWalkable);
-    const seen = new Uint8Array(cells.length);
-    const stack = [start];
-    seen[start] = 1;
-    while (stack.length) {
-      const idx = stack.pop();
-      const x = idx % width;
-      const y = Math.floor(idx / width);
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = x + dx;
-        const ny = y + dy;
-        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-        const nIdx = ny * width + nx;
-        if (!seen[nIdx] && isWalkable(cells[nIdx])) {
-          seen[nIdx] = 1;
-          stack.push(nIdx);
-        }
-      }
-    }
-    const totalWalkable = Array.from(cells).filter(isWalkable).length;
+    const seen = floodFillWalkable(dungeon.cells, dungeon.width, dungeon.height, dungeon.floors);
+    const totalWalkable = Array.from(dungeon.cells).filter(isWalkable).length;
     const reached = Array.from(seen).filter((v) => v === 1).length;
     expect(reached).toBe(totalWalkable);
   });
@@ -69,5 +83,41 @@ describe('generateDungeon', () => {
     const dungeon = generateDungeon(CONFIG);
     const roundTripped = JSON.parse(JSON.stringify({ ...dungeon, cells: Array.from(dungeon.cells) }));
     expect(roundTripped.areas.length).toBe(dungeon.areas.length);
+  });
+
+  it('assigns globally unique room ids across floors', () => {
+    const dungeon = generateDungeon(MULTI_FLOOR_CONFIG);
+    const ids = dungeon.rooms.map((r) => r.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(dungeon.rooms.length).toBe(MULTI_FLOOR_CONFIG.rooms.count * MULTI_FLOOR_CONFIG.floors);
+  });
+
+  it('produces verticalLinksPerGap VerticalLinks for every floor gap', () => {
+    const dungeon = generateDungeon(MULTI_FLOOR_CONFIG);
+    expect(dungeon.links.length).toBe((MULTI_FLOOR_CONFIG.floors - 1) * MULTI_FLOOR_CONFIG.verticalLinksPerGap);
+    for (let f = 0; f < MULTI_FLOOR_CONFIG.floors - 1; f++) {
+      expect(dungeon.links.some((l) => l.fromFloor === f && l.toFloor === f + 1)).toBe(true);
+    }
+  });
+
+  it('every floor is walkable-connected to every other floor via VerticalLinks', () => {
+    const dungeon = generateDungeon(MULTI_FLOOR_CONFIG);
+    const seen = floodFillWalkable(dungeon.cells, dungeon.width, dungeon.height, dungeon.floors);
+    const totalWalkable = Array.from(dungeon.cells).filter(isWalkable).length;
+    const reached = Array.from(seen).filter((v) => v === 1).length;
+    expect(reached).toBe(totalWalkable);
+  });
+
+  it('is bit-for-bit deterministic across two runs with the same seed, multi-floor', () => {
+    const a = generateDungeon(MULTI_FLOOR_CONFIG);
+    const b = generateDungeon(MULTI_FLOOR_CONFIG);
+    const serialize = (d) => JSON.stringify({ ...d, cells: Array.from(d.cells) });
+    expect(serialize(a)).toEqual(serialize(b));
+  });
+
+  it('every door id is unique across floors', () => {
+    const dungeon = generateDungeon(MULTI_FLOOR_CONFIG);
+    const ids = dungeon.doors.map((d) => d.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
