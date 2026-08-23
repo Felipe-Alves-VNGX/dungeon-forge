@@ -1,7 +1,7 @@
 // packages/core/test/pipeline.test.js
 import { describe, it, expect } from 'vitest';
 import { generateDungeon } from '../src/pipeline.js';
-import { CELL } from '../src/grid.js';
+import { CELL, isWalkable } from '../src/grid.js';
 
 const CONFIG = {
   seed: 'plan-m0-m3',
@@ -24,10 +24,6 @@ const MULTI_FLOOR_CONFIG = {
   height: 40,
   rooms: { ...CONFIG.rooms, count: 6, spawnRadius: 14 },
 };
-
-function isWalkable(v) {
-  return v === CELL.ROOM || v === CELL.HALLWAY || v === CELL.STAIR;
-}
 
 // Builds the set of (x, y, fromFloor, toFloor) cell pairs where a vertical
 // z-transition is legitimately allowed — i.e. cells that are actually part

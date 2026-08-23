@@ -5,7 +5,7 @@ import { validateDungeon } from '../src/validate.js';
 // SPEC.md §6 mandates running the validator over 10,000 seeds in CI. That's
 // too slow for the inner dev loop, so the count is configurable — set
 // DUNGEON_FORGE_PROPERTY_SEEDS=10000 in CI, leave the smaller default locally.
-const SEED_COUNT = Number(process.env.DUNGEON_FORGE_PROPERTY_SEEDS ?? 200);
+const SEED_COUNT = Number(process.env.DUNGEON_FORGE_PROPERTY_SEEDS ?? 2000);
 
 const CONFIG = {
   floors: 2,

@@ -155,7 +155,9 @@ export function buildKey(rooms, adjacency, entranceRoomId, keyConfig) {
   const legend = Object.entries(LEGEND_BY_ROLE)
     .filter(([role]) => rolesPresent.has(role))
     .map(([, symbol]) => ({ ...symbol }));
-  legend.push({ kind: 'area', caption: 'Área sem papel especial' });
+  if (rolesPresent.has('filler')) {
+    legend.push({ kind: 'area', caption: 'Área sem papel especial' });
+  }
 
   const byLabel = Object.fromEntries(areas.map((a) => [a.label, a.id]));
 

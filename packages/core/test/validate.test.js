@@ -82,4 +82,54 @@ describe('validateDungeon', () => {
     expect(result.ok).toBe(false);
     expect(result.errors.some((e) => e.code === 'key-complete')).toBe(true);
   });
+
+  it('flags an unreachable walkable cell on a floor (floor connectivity)', () => {
+    const dungeon = generateDungeon(CONFIG);
+    const brokenCells = dungeon.cells.slice();
+    const isWalkableCell = (v) => v === CELL.ROOM || v === CELL.HALLWAY || v === CELL.STAIR;
+    // Picking the first EMPTY cell isn't safe: it can sit right next to a
+    // walkable cell, in which case turning it into a HALLWAY just extends the
+    // connected region instead of creating an unreachable one. Require the
+    // cell to have zero walkable orthogonal neighbors so it's genuinely
+    // isolated once converted.
+    let emptyIdx = -1;
+    for (let i = 0; i < brokenCells.length; i++) {
+      if (brokenCells[i] !== CELL.EMPTY) continue;
+      const x = i % dungeon.width;
+      const y = Math.floor(i / dungeon.width);
+      const hasWalkableNeighbor = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || nx >= dungeon.width || ny < 0 || ny >= dungeon.height) return false;
+        return isWalkableCell(brokenCells[ny * dungeon.width + nx]);
+      });
+      if (!hasWalkableNeighbor) { emptyIdx = i; break; }
+    }
+    expect(emptyIdx).toBeGreaterThanOrEqual(0);
+    brokenCells[emptyIdx] = CELL.HALLWAY;
+    const result = validateDungeon({ ...dungeon, cells: brokenCells });
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((e) => e.code === 'floor-connectivity')).toBe(true);
+  });
+
+  it('flags a floor unreachable from the rest of the dungeon (global connectivity)', () => {
+    const dungeon = generateDungeon(MULTI_FLOOR_CONFIG);
+    const size = dungeon.width * dungeon.height;
+    const brokenCells = dungeon.cells.slice();
+    // Clear every VerticalLink footprint cell that touches floor 0 (on
+    // floor 0's own side only), severing floor 0 from every floor above it
+    // — the only way floors connect at all.
+    for (const link of dungeon.links) {
+      if (link.fromFloor !== 0 && link.toFloor !== 0) continue;
+      for (let dy = 0; dy < link.h; dy++) {
+        for (let dx = 0; dx < link.w; dx++) {
+          const idx = 0 * size + (link.y + dy) * dungeon.width + (link.x + dx);
+          brokenCells[idx] = CELL.EMPTY;
+        }
+      }
+    }
+    const result = validateDungeon({ ...dungeon, cells: brokenCells });
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((e) => e.code === 'global-connectivity')).toBe(true);
+  });
 });

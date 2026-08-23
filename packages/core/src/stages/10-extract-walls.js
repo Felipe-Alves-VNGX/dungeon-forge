@@ -1,9 +1,5 @@
 // packages/core/src/stages/10-extract-walls.js
-import { CELL, getCell, inBounds } from '../grid.js';
-
-function isWalkable(value) {
-  return value === CELL.ROOM || value === CELL.HALLWAY || value === CELL.STAIR;
-}
+import { CELL, getCell, inBounds, isWalkable } from '../grid.js';
 
 function isDoorNeighbor(value) {
   return value === CELL.HALLWAY || value === CELL.STAIR;

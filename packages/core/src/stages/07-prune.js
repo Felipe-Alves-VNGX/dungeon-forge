@@ -1,10 +1,6 @@
-import { CELL, getCell, setCell, inBounds } from '../grid.js';
+import { CELL, getCell, setCell, inBounds, isWalkable } from '../grid.js';
 
 const NEIGHBORS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-
-function isWalkable(v) {
-  return v === CELL.ROOM || v === CELL.HALLWAY || v === CELL.STAIR;
-}
 
 function walkableNeighborCount(grid, width, height, floor, x, y) {
   let count = 0;

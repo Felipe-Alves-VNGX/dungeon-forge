@@ -1,8 +1,8 @@
 // packages/core/src/validate.js
-import { CELL } from './grid.js';
+import { CELL, isWalkable } from './grid.js';
 
 function isWalkableCell(v) {
-  return v === CELL.ROOM || v === CELL.HALLWAY || v === CELL.STAIR;
+  return isWalkable(v);
 }
 
 function safeCellAt(cells, width, height, floor, x, y) {
@@ -235,6 +235,9 @@ function checkWallBudget(dungeon, errors) {
       pushIssue(errors, 'wall-budget', `floor ${floor}: ${count} wall segments exceeds the 1500 budget (SPEC.md §6.7)`);
     }
   }
+  if (walls.length >= 1500) {
+    pushIssue(errors, 'wall-budget', `total: ${walls.length} wall segments exceeds the 1500 budget for a single-Scene (v14) target (SPEC.md §6.7)`);
+  }
 }
 
 // --- 8. Salas alcançáveis ---
@@ -381,6 +384,10 @@ function checkNoteBudget(dungeon, errors) {
     if (total > 60) {
       pushIssue(errors, 'note-budget', `floor ${floor}: ${total} notes (areas + links*2) exceeds the 60 budget (SPEC.md §6.14)`);
     }
+  }
+  const totalNotes = areas.length + links.length * 2;
+  if (totalNotes > 60) {
+    pushIssue(errors, 'note-budget', `total: ${totalNotes} notes (areas + links*2) exceeds the 60 budget for a single-Scene (v14) target (SPEC.md §6.14)`);
   }
 }
 

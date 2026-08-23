@@ -26,3 +26,7 @@ export function setCell(grid, x, y, z, width, height, value) {
 export function inBounds(x, y, z, width, height, floors) {
   return x >= 0 && x < width && y >= 0 && y < height && z >= 0 && z < floors;
 }
+
+export function isWalkable(value) {
+  return value === CELL.ROOM || value === CELL.HALLWAY || value === CELL.STAIR;
+}

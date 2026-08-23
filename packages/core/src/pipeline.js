@@ -11,6 +11,7 @@ import { prune } from './stages/07-prune.js';
 import { mission } from './stages/08-mission.js';
 import { buildKey, keyToMarkdown } from './stages/09-key.js';
 import { extractWalls } from './stages/10-extract-walls.js';
+import { validateDungeon } from './validate.js';
 
 function clampRoomToGrid(room, width, height) {
   // Defensive clamp: steering separation in placeRooms can still push a
@@ -216,4 +217,4 @@ export function generateDungeon(config) {
   };
 }
 
-export { keyToMarkdown };
+export { keyToMarkdown, validateDungeon };
