@@ -29,10 +29,35 @@ function isWalkable(v) {
   return v === CELL.ROOM || v === CELL.HALLWAY || v === CELL.STAIR;
 }
 
-function floodFillWalkable(cells, width, height, floors) {
+// Builds the set of (x, y, fromFloor, toFloor) cell pairs where a vertical
+// z-transition is legitimately allowed — i.e. cells that are actually part
+// of a VerticalLink footprint. A blanket "any z+/-1 at the same (x,y)" rule
+// is over-permissive: floors are carved from independent RNG substreams, so
+// walkable areas on adjacent floors coincidentally overlap in (x,y) often
+// enough to mask a fully broken stair-carving mechanism (false positives
+// observed in ~3/8 sampled seeds at higher room counts). Restricting to
+// real link footprints makes this test actually exercise VerticalLink
+// carving instead of coincidental (x,y) overlap.
+function verticalTransitionKeys(links) {
+  const keys = new Set();
+  for (const link of links) {
+    for (let dy = 0; dy < link.h; dy++) {
+      for (let dx = 0; dx < link.w; dx++) {
+        const x = link.x + dx;
+        const y = link.y + dy;
+        keys.add(`${x},${y},${link.fromFloor},${link.toFloor}`);
+        keys.add(`${x},${y},${link.toFloor},${link.fromFloor}`);
+      }
+    }
+  }
+  return keys;
+}
+
+function floodFillWalkable(cells, width, height, floors, links = []) {
   const size = width * height;
   const start = cells.findIndex(isWalkable);
   const seen = new Uint8Array(cells.length);
+  const verticalKeys = verticalTransitionKeys(links);
   seen[start] = 1;
   const stack = [start];
   while (stack.length) {
@@ -44,6 +69,7 @@ function floodFillWalkable(cells, width, height, floors) {
     for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
       const nx = x + dx, ny = y + dy, nz = z + dz;
       if (nx < 0 || nx >= width || ny < 0 || ny >= height || nz < 0 || nz >= floors) continue;
+      if (dz !== 0 && !verticalKeys.has(`${x},${y},${z},${nz}`)) continue;
       const nIdx = nz * size + ny * width + nx;
       if (!seen[nIdx] && isWalkable(cells[nIdx])) {
         seen[nIdx] = 1;
@@ -102,7 +128,7 @@ describe('generateDungeon', () => {
 
   it('every floor is walkable-connected to every other floor via VerticalLinks', () => {
     const dungeon = generateDungeon(MULTI_FLOOR_CONFIG);
-    const seen = floodFillWalkable(dungeon.cells, dungeon.width, dungeon.height, dungeon.floors);
+    const seen = floodFillWalkable(dungeon.cells, dungeon.width, dungeon.height, dungeon.floors, dungeon.links);
     const totalWalkable = Array.from(dungeon.cells).filter(isWalkable).length;
     const reached = Array.from(seen).filter((v) => v === 1).length;
     expect(reached).toBe(totalWalkable);
