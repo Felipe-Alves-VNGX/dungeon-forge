@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dungeon Forge — Harness</title>
+    <style>
+      body { font-family: system-ui, sans-serif; background: #111; color: #eee; padding: 1rem; }
+      #controls { margin-bottom: 1rem; }
+      #floor-image { border: 1px solid #444; max-width: 100%; }
+      #key-markdown { white-space: pre-wrap; background: #1a1a1a; padding: 1rem; max-height: 400px; overflow: auto; }
+    </style>
+  </head>
+  <body>
+    <h1>Dungeon Forge — harness</h1>
+    <div id="controls">
+      <label>Seed: <input id="seed" value="preview-seed" /></label>
+      <button id="generate">Generate</button>
+    </div>
+    <img id="floor-image" alt="andar gerado" />
+    <h2>Chave (markdown)</h2>
+    <pre id="key-markdown"></pre>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
