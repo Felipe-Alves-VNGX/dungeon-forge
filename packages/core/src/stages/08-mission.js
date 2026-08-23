@@ -124,6 +124,15 @@ export function mission(rooms, edges) {
       r.role = 'climax';
     } else if (degree.get(r.id) >= 3) {
       r.role = 'junction';
+    } else if (degree.get(r.id) === 1) {
+      // A dead-end room that isn't the entrance/climax and wasn't already
+      // marked treasure (cycle-only reachable) is still a leaf with no
+      // designated role under SPEC.md §5.10's table — leaving it 'filler'
+      // violates §6 invariant 6 ("nenhuma folha filler sem saída"). Folding
+      // it into 'treasure' keeps every leaf content-bearing; it's still
+      // narratively an optional branch off the main path, same as the
+      // stricter cycle-only case.
+      r.role = 'treasure';
     } else {
       r.role = 'filler';
     }

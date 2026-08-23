@@ -73,6 +73,30 @@ describe('mission', () => {
     expect(result.path[result.path.length - 1]).toBe(result.climaxRoomId);
   });
 
+  it('never leaves a leaf (degree-1) room with role filler', () => {
+    // A star: hub 0 connects to four leaves (1,2,3,4). Two of them become
+    // entrance/climax; the other two have no cycle edge, so under the old
+    // role table they'd fall through to 'filler' despite being dead ends.
+    const rooms = [room(0, 0, 0), room(1, 1, 1), room(2, -1, 1), room(3, 1, -1), room(4, -1, -1)];
+    const edges = [
+      { a: 0, b: 1, weight: 1, kind: 'mst' },
+      { a: 0, b: 2, weight: 1, kind: 'mst' },
+      { a: 0, b: 3, weight: 1, kind: 'mst' },
+      { a: 0, b: 4, weight: 1, kind: 'mst' },
+    ];
+    mission(rooms, edges);
+    const degree = new Map(rooms.map((r) => [r.id, 0]));
+    for (const e of edges) {
+      degree.set(e.a, degree.get(e.a) + 1);
+      degree.set(e.b, degree.get(e.b) + 1);
+    }
+    for (const r of rooms) {
+      if (degree.get(r.id) === 1) {
+        expect(r.role).not.toBe('filler');
+      }
+    }
+  });
+
   it('is deterministic (mission takes no RNG)', () => {
     const rooms1 = [room(0, 0, 0), room(1, 1, 0), room(2, 2, 0)];
     const rooms2 = [room(0, 0, 0), room(1, 1, 0), room(2, 2, 0)];
