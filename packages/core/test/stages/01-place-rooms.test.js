@@ -35,7 +35,13 @@ describe('placeRooms', () => {
     expect(rooms).toHaveLength(PARAMS.count);
   });
 
-  it('no two rooms overlap, with >=1 cell of clearance on every side', () => {
+  // Note: a negative margin here actually *shrinks* the compared boxes, so
+  // this only tolerates up to 1 cell of genuine overlap — it does not verify
+  // a 1-cell-clearance guarantee. The room-placement algorithm's steering
+  // separation resolves overlap to zero clearance (not a 1-cell buffer) after
+  // Math.round snapping — a known, accepted limitation of the current
+  // algorithm (deferred to a future plan), not a bug in this test.
+  it('no two rooms genuinely overlap (tolerating up to 1 cell of edge contact, a known limitation of Math.round snapping post-separation)', () => {
     const { rooms } = placeRooms(PARAMS, 0, deriveRng('seed-3', 'place-rooms'));
     for (let i = 0; i < rooms.length; i++) {
       for (let j = i + 1; j < rooms.length; j++) {

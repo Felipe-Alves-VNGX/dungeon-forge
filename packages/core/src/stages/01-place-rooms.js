@@ -2,6 +2,11 @@
  * @param {import('../types.js').RoomParams} params
  * @param {number} floor
  * @param {import('../rng.js').Rng} rng
+ *
+ * Note: returned rooms are NOT guaranteed to fit within any particular grid
+ * width/height — this function has no width/height parameter and only shapes
+ * rooms relative to params.spawnRadius/sizeMax. Callers must clamp/validate
+ * bounds themselves (see pipeline.js's post-placeRooms clamp).
  */
 export function placeRooms(params, floor, rng) {
   const candidateCount = Math.round(params.count * 1.6);
@@ -44,8 +49,10 @@ export function placeRooms(params, floor, rng) {
     }
   }
 
-  // Snap to integer cell grid, centered at spawnRadius offset so all
-  // coordinates end up non-negative.
+  // Snap to integer cell grid. The offset centers the spawn disk at the
+  // grid's approximate midpoint, assuming a grid roughly
+  // 2 * (spawnRadius + sizeMax/2) on a side — matching SPEC.md's own
+  // default parameters.
   const offset = params.spawnRadius + params.sizeMax / 2;
   const boxed = candidates.map((c) => {
     const x = Math.round(c.cx + offset - c.w / 2);
