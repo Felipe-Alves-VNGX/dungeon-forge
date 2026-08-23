@@ -5,6 +5,10 @@ function isWalkable(value) {
   return value === CELL.ROOM || value === CELL.HALLWAY || value === CELL.STAIR;
 }
 
+function isDoorNeighbor(value) {
+  return value === CELL.HALLWAY || value === CELL.STAIR;
+}
+
 function cellValueAt(grid, x, y, floor, width, height) {
   if (!inBounds(x, y, floor, width, height, floor + 1)) return CELL.EMPTY;
   return getCell(grid, x, y, floor, width, height);
@@ -51,25 +55,25 @@ function collectDoorEdges(grid, width, height, floor, rooms) {
   for (const room of rooms) {
     // North edge: outside cell is (x, room.y - 1)
     for (let x = room.x; x < room.x + room.w; x++) {
-      if (cellValueAt(grid, x, room.y - 1, floor, width, height) === CELL.HALLWAY) {
+      if (isDoorNeighbor(cellValueAt(grid, x, room.y - 1, floor, width, height))) {
         horizontal.push({ x, y: room.y, roomId: room.id });
       }
     }
     // South edge: outside cell is (x, room.y + room.h)
     for (let x = room.x; x < room.x + room.w; x++) {
-      if (cellValueAt(grid, x, room.y + room.h, floor, width, height) === CELL.HALLWAY) {
+      if (isDoorNeighbor(cellValueAt(grid, x, room.y + room.h, floor, width, height))) {
         horizontal.push({ x, y: room.y + room.h, roomId: room.id });
       }
     }
     // West edge: outside cell is (room.x - 1, y)
     for (let y = room.y; y < room.y + room.h; y++) {
-      if (cellValueAt(grid, room.x - 1, y, floor, width, height) === CELL.HALLWAY) {
+      if (isDoorNeighbor(cellValueAt(grid, room.x - 1, y, floor, width, height))) {
         vertical.push({ x: room.x, y, roomId: room.id });
       }
     }
     // East edge: outside cell is (room.x + room.w, y)
     for (let y = room.y; y < room.y + room.h; y++) {
-      if (cellValueAt(grid, room.x + room.w, y, floor, width, height) === CELL.HALLWAY) {
+      if (isDoorNeighbor(cellValueAt(grid, room.x + room.w, y, floor, width, height))) {
         vertical.push({ x: room.x + room.w, y, roomId: room.id });
       }
     }

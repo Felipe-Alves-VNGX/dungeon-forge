@@ -78,4 +78,20 @@ describe('extractWalls', () => {
     const b = extractWalls(gridB, width, height, 0, [room(0, 2, 2, 4, 4)]);
     expect(a.walls).toEqual(b.walls);
   });
+
+  it('registers a door where a room boundary touches a CELL.STAIR cell (vertical link footprint)', () => {
+    const width = 10;
+    const height = 10;
+    const grid = createGrid(width, height, 1);
+    const r0 = room(0, 2, 2, 4, 4);
+    stamp(grid, width, height, r0.x, r0.y, r0.w, r0.h, CELL.ROOM);
+    // A vertical-link footprint sitting directly against the room's east wall.
+    setCell(grid, 6, 3, 0, width, height, CELL.STAIR);
+
+    const { walls, doors } = extractWalls(grid, width, height, 0, [r0]);
+    expect(doors.length).toBeGreaterThan(0);
+    expect(r0.doors.length).toBeGreaterThan(0);
+    const doorWalls = walls.filter((w) => w.isDoor);
+    expect(doorWalls.some((w) => w.x1 === 6 && w.y1 === 3 && w.x2 === 6 && w.y2 === 4)).toBe(true);
+  });
 });
