@@ -44,6 +44,60 @@ function nearestRoom(rooms, x, y) {
   return best;
 }
 
+function rectsOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function overlapsAny(room, placed) {
+  return placed.some((other) => rectsOverlap(room, other));
+}
+
+/**
+ * Scans grid positions in row-major order and returns the first one where a
+ * room of `room.w x room.h` doesn't overlap anything in `placed`. Returns
+ * null if no such position exists anywhere on the floor.
+ */
+function findFreePosition(room, placed, width, height) {
+  for (let y = 0; y <= height - room.h; y++) {
+    for (let x = 0; x <= width - room.w; x++) {
+      const candidate = { x, y, w: room.w, h: room.h };
+      if (!overlapsAny(candidate, placed)) return { x, y };
+    }
+  }
+  return null;
+}
+
+/**
+ * Deterministically resolves any residual overlap between rooms on the same
+ * floor. placeRooms' steering separation (SPEC.md §5.3) and clampRoomToGrid's
+ * defensive bounds clamp can each leave two rooms overlapping. An overlapping
+ * pair silently merges into one blob in the grid (CELL.ROOM carries no room
+ * id), so extractWalls can't tell the rooms apart and the covered room ends
+ * up with zero doors (SPEC.md §6 invariant 8). Rooms are processed in id
+ * order and only ever relocated relative to already-placed earlier rooms —
+ * a room that still overlaps after relocation is left in place (rather than
+ * looping forever) on the rare floor with no free space of its size left;
+ * downstream validation surfaces that case the same way it always did,
+ * instead of this pass masking it with a nonsensical result.
+ * @param {import('./types.js').Room[]} rooms
+ * @param {number} width @param {number} height
+ */
+function resolveOverlaps(rooms, width, height) {
+  const placed = [];
+  for (const room of rooms) {
+    if (overlapsAny(room, placed)) {
+      const spot = findFreePosition(room, placed, width, height);
+      if (spot) {
+        room.x = spot.x;
+        room.y = spot.y;
+        room.cx = room.x + room.w / 2;
+        room.cy = room.y + room.h / 2;
+      }
+    }
+    placed.push(room);
+  }
+}
+
 function linkFootprintCenter(link) {
   return { x: link.x + (link.w - 1) / 2, y: link.y + (link.h - 1) / 2 };
 }
@@ -67,6 +121,7 @@ export function generateDungeon(config) {
       clampRoomToGrid(room, width, height);
       room.id = nextRoomId++;
     }
+    resolveOverlaps(rooms, width, height);
     for (const room of rooms) stampRoom(grid, room, floor, width, height);
 
     roomsByFloor.set(floor, rooms);
