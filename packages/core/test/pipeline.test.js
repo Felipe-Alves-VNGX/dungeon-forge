@@ -178,6 +178,38 @@ describe('generateDungeon', () => {
     }
   });
 
+  it('never leaves two rooms on the same floor touching with zero gap between them', () => {
+    const TIGHT_CONFIG = {
+      seed: 'gap-check',
+      floors: 2,
+      width: 30,
+      height: 30,
+      rooms: { count: 6, sizeMean: 6, sizeStdDev: 2, sizeMin: 3, sizeMax: 10, spawnRadius: 12, separationIters: 40 },
+      cycleRate: 0.25,
+      verticalLinksPerGap: 1,
+      carve: { newHallway: 10, reuseHallway: 1, throughRoom: 50, turn: 2 },
+      pruneIterations: 8,
+      key: { scheme: 'per-floor', numberJunctions: false, startAt: 1, padTo: 2, exitsInEntries: true },
+    };
+    const tooClose = (a, b) =>
+      a.x < b.x + b.w + 1 && a.x + a.w + 1 > b.x && a.y < b.y + b.h + 1 && a.y + a.h + 1 > b.y;
+    for (let i = 0; i < 50; i++) {
+      const dungeon = generateDungeon({ ...TIGHT_CONFIG, seed: `gap-check-${i}` });
+      const byFloor = new Map();
+      for (const r of dungeon.rooms) {
+        if (!byFloor.has(r.floor)) byFloor.set(r.floor, []);
+        byFloor.get(r.floor).push(r);
+      }
+      for (const rooms of byFloor.values()) {
+        for (let a = 0; a < rooms.length; a++) {
+          for (let b = a + 1; b < rooms.length; b++) {
+            expect(tooClose(rooms[a], rooms[b])).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
   it('keeps every room within grid bounds after overlap resolution', () => {
     const dungeon = generateDungeon(MULTI_FLOOR_CONFIG);
     for (const r of dungeon.rooms) {

@@ -44,12 +44,12 @@ function nearestRoom(rooms, x, y) {
   return best;
 }
 
-function rectsOverlap(a, b) {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+function tooClose(a, b) {
+  return a.x < b.x + b.w + 1 && a.x + a.w + 1 > b.x && a.y < b.y + b.h + 1 && a.y + a.h + 1 > b.y;
 }
 
 function overlapsAny(room, placed) {
-  return placed.some((other) => rectsOverlap(room, other));
+  return placed.some((other) => tooClose(room, other));
 }
 
 /**
@@ -68,17 +68,22 @@ function findFreePosition(room, placed, width, height) {
 }
 
 /**
- * Deterministically resolves any residual overlap between rooms on the same
- * floor. placeRooms' steering separation (SPEC.md §5.3) and clampRoomToGrid's
- * defensive bounds clamp can each leave two rooms overlapping. An overlapping
- * pair silently merges into one blob in the grid (CELL.ROOM carries no room
- * id), so extractWalls can't tell the rooms apart and the covered room ends
- * up with zero doors (SPEC.md §6 invariant 8). Rooms are processed in id
- * order and only ever relocated relative to already-placed earlier rooms —
- * a room that still overlaps after relocation is left in place (rather than
- * looping forever) on the rare floor with no free space of its size left;
- * downstream validation surfaces that case the same way it always did,
- * instead of this pass masking it with a nonsensical result.
+ * Deterministically resolves any residual overlap **or zero-gap adjacency**
+ * between rooms on the same floor. placeRooms' steering separation (SPEC.md
+ * §5.3) and clampRoomToGrid's defensive bounds clamp can each leave two rooms
+ * overlapping. An overlapping pair silently merges into one blob in the grid
+ * (CELL.ROOM carries no room id), so extractWalls can't tell the rooms apart
+ * and the covered room ends up with zero doors (SPEC.md §6 invariant 8).
+ * SPEC.md §5.3 requires ≥1 cell of clearance on every side of a room —
+ * `tooClose` checks that directly by padding each room's far edge by 1 cell
+ * before testing intersection, so two rooms are rejected as conflicting
+ * whenever their gap is less than 1 cell, not only when they actually
+ * overlap. Rooms are processed in id order and only ever relocated relative
+ * to already-placed earlier rooms — a room that still overlaps after
+ * relocation is left in place (rather than looping forever) on the rare
+ * floor with no free space of its size left; downstream validation surfaces
+ * that case the same way it always did, instead of this pass masking it with
+ * a nonsensical result.
  * @param {import('./types.js').Room[]} rooms
  * @param {number} width @param {number} height
  */
