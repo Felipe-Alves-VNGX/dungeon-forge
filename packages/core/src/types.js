@@ -14,6 +14,16 @@
  * @property {number} verticalLinksPerGap
  * @property {CarveCosts} carve
  * @property {number} pruneIterations
+ * @property {KeyConfig} key
+ */
+
+/**
+ * @typedef {Object} KeyConfig
+ * @property {'flat'|'per-floor'|'alpha-floor'} scheme
+ * @property {boolean} numberJunctions
+ * @property {number} startAt
+ * @property {number} padTo
+ * @property {boolean} exitsInEntries
  */
 
 /**
@@ -112,7 +122,7 @@
 
 /**
  * @typedef {Object} LegendSymbol
- * @property {'door'|'secret'|'stairUp'|'stairDown'|'shaft'|'areaNumber'} kind
+ * @property {'entrance'|'climax'|'treasure'|'junction'|'area'|'stairUp'|'stairDown'|'secret'} kind
  * @property {string} caption
  */
 
