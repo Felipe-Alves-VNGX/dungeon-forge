@@ -1,0 +1,98 @@
+// packages/core/test/stages/09-key.test.js
+import { describe, it, expect } from 'vitest';
+import { buildKey, keyToMarkdown } from '../../src/stages/09-key.js';
+
+function room(id, floor, cx, cy, role = 'filler') {
+  return { id, floor, x: cx, y: cy, w: 1, h: 1, cx, cy, role, doors: [] };
+}
+
+const DEFAULT_KEY_CONFIG = {
+  scheme: 'per-floor',
+  numberJunctions: false,
+  startAt: 1,
+  padTo: 2,
+  exitsInEntries: true,
+};
+
+describe('buildKey', () => {
+  it('numbers every room via BFS from the entrance, ties broken by (y, then x)', () => {
+    // entrance(0) at origin; two BFS-equal-distance neighbors 1 (y=0,x=1)
+    // and 2 (y=-1,x=1) — 2 should win the tie (smaller y first).
+    const rooms = [
+      room(0, 0, 0, 0, 'entrance'),
+      room(1, 0, 1, 0, 'filler'),
+      room(2, 0, 1, -1, 'filler'),
+    ];
+    rooms[0].edges = undefined; // rooms don't carry edges; buildKey takes rooms + adjacency via exits computed elsewhere in real pipeline
+    const adjacency = [
+      { a: 0, b: 1 },
+      { a: 0, b: 2 },
+    ];
+    const { areas, key } = buildKey(rooms, adjacency, 0, DEFAULT_KEY_CONFIG);
+    const areaFor = (id) => areas.find((a) => a.roomId === id);
+    expect(areaFor(0).label).toBe('1-01');
+    expect(areaFor(2).label).toBe('1-02'); // y=-1 sorts before y=0
+    expect(areaFor(1).label).toBe('1-03');
+    expect(key.byLabel['1-01']).toBe(areaFor(0).id);
+  });
+
+  it('supports the flat scheme (no floor prefix)', () => {
+    const rooms = [room(0, 0, 0, 0, 'entrance'), room(1, 0, 1, 0)];
+    const adjacency = [{ a: 0, b: 1 }];
+    const { areas } = buildKey(rooms, adjacency, 0, { ...DEFAULT_KEY_CONFIG, scheme: 'flat' });
+    const labels = areas.map((a) => a.label).sort();
+    expect(labels).toEqual(['1', '2']);
+  });
+
+  it('supports the alpha-floor scheme', () => {
+    const rooms = [
+      room(0, 0, 0, 0, 'entrance'),
+      room(1, 1, 1, 0),
+    ];
+    const adjacency = [{ a: 0, b: 1 }];
+    const { areas } = buildKey(rooms, adjacency, 0, { ...DEFAULT_KEY_CONFIG, scheme: 'alpha-floor' });
+    const areaFor = (id) => areas.find((a) => a.roomId === id);
+    expect(areaFor(0).label).toBe('A1');
+    expect(areaFor(1).label).toBe('B1');
+  });
+
+  it('generates a KeyEntry per area with role-appropriate title', () => {
+    const rooms = [
+      room(0, 0, 0, 0, 'entrance'),
+      room(1, 0, 1, 0, 'climax'),
+    ];
+    const adjacency = [{ a: 0, b: 1 }];
+    const { key } = buildKey(rooms, adjacency, 0, DEFAULT_KEY_CONFIG);
+    expect(key.entries.find((e) => e.title === 'Entrada')).toBeTruthy();
+    expect(key.entries.find((e) => e.title === 'Câmara final')).toBeTruthy();
+  });
+
+  it('legend only lists symbols actually present', () => {
+    const rooms = [room(0, 0, 0, 0, 'entrance'), room(1, 0, 1, 0, 'filler')];
+    const adjacency = [{ a: 0, b: 1 }];
+    const { key } = buildKey(rooms, adjacency, 0, DEFAULT_KEY_CONFIG);
+    expect(key.legend.some((s) => s.kind === 'treasure')).toBe(false);
+    expect(key.legend.some((s) => s.kind === 'entrance')).toBe(true);
+  });
+
+  it('is deterministic — same input, same output, no RNG parameter exists', () => {
+    const rooms1 = [room(0, 0, 0, 0, 'entrance'), room(1, 0, 1, 0)];
+    const rooms2 = [room(0, 0, 0, 0, 'entrance'), room(1, 0, 1, 0)];
+    const adjacency = [{ a: 0, b: 1 }];
+    const r1 = buildKey(rooms1, adjacency, 0, DEFAULT_KEY_CONFIG);
+    const r2 = buildKey(rooms2, adjacency, 0, DEFAULT_KEY_CONFIG);
+    expect(r1.areas.map((a) => a.label)).toEqual(r2.areas.map((a) => a.label));
+  });
+});
+
+describe('keyToMarkdown', () => {
+  it('produces a heading per floor and a section per area', () => {
+    const rooms = [room(0, 0, 0, 0, 'entrance'), room(1, 0, 1, 0)];
+    const adjacency = [{ a: 0, b: 1 }];
+    const { areas, key } = buildKey(rooms, adjacency, 0, DEFAULT_KEY_CONFIG);
+    const md = keyToMarkdown(areas, key);
+    expect(md).toContain('# ');
+    expect(md).toContain('1-01');
+    expect(md).toContain('1-02');
+  });
+});
