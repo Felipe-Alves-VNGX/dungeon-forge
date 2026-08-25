@@ -186,6 +186,10 @@ export function buildKey(rooms, adjacency, entranceRoomId, keyConfig, links = []
     .filter(([role]) => rolesPresent.has(role))
     .map(([, symbol]) => ({ ...symbol }));
   legend.push({ kind: 'area', caption: 'Área sem papel especial' });
+  if (links.length > 0) {
+    legend.push({ kind: 'stairUp', caption: 'Escada subindo' });
+    legend.push({ kind: 'stairDown', caption: 'Escada descendo' });
+  }
 
   const byLabel = Object.fromEntries(areas.map((a) => [a.label, a.id]));
 

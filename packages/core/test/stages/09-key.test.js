@@ -106,6 +106,20 @@ describe('buildKey', () => {
     expect(areaFor(2).label).toBe('2-01');
   });
 
+  it('legend includes stairUp/stairDown iff links exist', () => {
+    const rooms = [room(0, 0, 0, 0, 'entrance'), room(1, 0, 1, 0, 'filler'), room(2, 1, 0, 0, 'filler')];
+    const adjacency = [{ a: 0, b: 1 }];
+
+    const withoutLinks = buildKey(rooms, adjacency, 0, DEFAULT_KEY_CONFIG);
+    expect(withoutLinks.key.legend.some((s) => s.kind === 'stairUp')).toBe(false);
+    expect(withoutLinks.key.legend.some((s) => s.kind === 'stairDown')).toBe(false);
+
+    const links = [{ id: 0, fromFloor: 0, toFloor: 1, x: 0, y: 0, w: 2, h: 1, kind: 'stair', roomIdFrom: 1, roomIdTo: 2 }];
+    const withLinks = buildKey(rooms, adjacency, 0, DEFAULT_KEY_CONFIG, links);
+    expect(withLinks.key.legend.some((s) => s.kind === 'stairUp')).toBe(true);
+    expect(withLinks.key.legend.some((s) => s.kind === 'stairDown')).toBe(true);
+  });
+
   it('lists a stair exit on both ends of a VerticalLink with the right destination label', () => {
     const rooms = [
       room(0, 0, 0, 0, 'entrance'),
