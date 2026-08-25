@@ -17,10 +17,6 @@ const CONFIG = {
 };
 
 describe('generateDungeon', () => {
-  it('throws a clear error for floors !== 1 (multi-floor is out of scope for this plan)', () => {
-    expect(() => generateDungeon({ ...CONFIG, floors: 2 })).toThrow(/floors/i);
-  });
-
   it('produces a Dungeon with rooms, walls, areas, and a markdown-able key', () => {
     const dungeon = generateDungeon(CONFIG);
     expect(dungeon.rooms.length).toBe(CONFIG.rooms.count);
@@ -69,5 +65,75 @@ describe('generateDungeon', () => {
     const dungeon = generateDungeon(CONFIG);
     const roundTripped = JSON.parse(JSON.stringify({ ...dungeon, cells: Array.from(dungeon.cells) }));
     expect(roundTripped.areas.length).toBe(dungeon.areas.length);
+  });
+});
+
+describe('generateDungeon — multi-floor (M5)', () => {
+  const MULTI_CONFIG = { ...CONFIG, seed: 'plan-m5-multi', floors: 3 };
+
+  it('produces at least one VerticalLink per floor gap and globally unique room ids', () => {
+    const dungeon = generateDungeon(MULTI_CONFIG);
+    expect(dungeon.links.length).toBeGreaterThanOrEqual(MULTI_CONFIG.floors - 1);
+
+    const ids = dungeon.rooms.map((r) => r.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('every floor has a link up (except the top) and a link down (except the bottom)', () => {
+    const dungeon = generateDungeon(MULTI_CONFIG);
+    for (let floor = 0; floor < MULTI_CONFIG.floors; floor++) {
+      const hasDown = dungeon.links.some((l) => l.fromFloor === floor);
+      const hasUp = dungeon.links.some((l) => l.toFloor === floor);
+      if (floor < MULTI_CONFIG.floors - 1) expect(hasDown).toBe(true);
+      if (floor > 0) expect(hasUp).toBe(true);
+    }
+  });
+
+  it('the whole multi-floor dungeon is one connected 3D component', () => {
+    const dungeon = generateDungeon(MULTI_CONFIG);
+    const { cells, width, height, floors } = dungeon;
+    const isWalkable = (v) => v === CELL.ROOM || v === CELL.HALLWAY || v === CELL.STAIR;
+    const idx3 = (x, y, z) => z * (width * height) + y * width + x;
+
+    const start = cells.findIndex(isWalkable);
+    const seen = new Uint8Array(cells.length);
+    const stack = [start];
+    seen[start] = 1;
+    while (stack.length) {
+      const i = stack.pop();
+      const z = Math.floor(i / (width * height));
+      const rem = i % (width * height);
+      const y = Math.floor(rem / width);
+      const x = rem % width;
+
+      const neighbors = [
+        [x + 1, y, z], [x - 1, y, z], [x, y + 1, z], [x, y - 1, z],
+      ];
+      // Vertical movement only through a stacked STAIR footprint (same x,y).
+      if (cells[i] === CELL.STAIR) {
+        if (z + 1 < floors) neighbors.push([x, y, z + 1]);
+        if (z - 1 >= 0) neighbors.push([x, y, z - 1]);
+      }
+
+      for (const [nx, ny, nz] of neighbors) {
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height || nz < 0 || nz >= floors) continue;
+        const nIdx = idx3(nx, ny, nz);
+        if (!seen[nIdx] && isWalkable(cells[nIdx])) {
+          seen[nIdx] = 1;
+          stack.push(nIdx);
+        }
+      }
+    }
+
+    const totalWalkable = Array.from(cells).filter(isWalkable).length;
+    const reached = Array.from(seen).filter((v) => v === 1).length;
+    expect(reached).toBe(totalWalkable);
+  });
+
+  it('is bit-for-bit deterministic across two runs with the same seed', () => {
+    const a = generateDungeon(MULTI_CONFIG);
+    const b = generateDungeon(MULTI_CONFIG);
+    const serialize = (d) => JSON.stringify({ ...d, cells: Array.from(d.cells) });
+    expect(serialize(a)).toEqual(serialize(b));
   });
 });

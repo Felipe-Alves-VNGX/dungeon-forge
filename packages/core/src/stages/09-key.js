@@ -35,31 +35,52 @@ function buildAdjacency(rooms, adjacency) {
   return adj;
 }
 
-function bfsOrder(rooms, adjacency, entranceRoomId) {
+function sortByPosition(ids, roomsById) {
+  return [...ids].sort((idA, idB) => {
+    const a = roomsById.get(idA);
+    const b = roomsById.get(idB);
+    return a.y - b.y || a.x - b.x || idA - idB;
+  });
+}
+
+// SPEC.md §5.11: BFS from the entrance, floor by floor, crossing a
+// VerticalLink only after the current floor's frontier is fully drained.
+// `adjacency` carries same-floor room-room edges only; `links` carries the
+// cross-floor connections separately so they can be deferred.
+function bfsOrder(rooms, adjacency, links, entranceRoomId) {
   const roomsById = new Map(rooms.map((r) => [r.id, r]));
-  const adj = buildAdjacency(rooms, adjacency);
+  const sameFloorAdj = buildAdjacency(rooms, adjacency);
+  const verticalAdj = buildAdjacency(rooms, links.map((l) => ({ a: l.roomIdFrom, b: l.roomIdTo })));
+
   const order = [];
   const seen = new Set([entranceRoomId]);
   let frontier = [entranceRoomId];
 
   while (frontier.length > 0) {
-    const sorted = [...frontier].sort((idA, idB) => {
-      const a = roomsById.get(idA);
-      const b = roomsById.get(idB);
-      return a.y - b.y || a.x - b.x || idA - idB;
-    });
-    order.push(...sorted);
+    let sameFloorFrontier = sortByPosition(frontier, roomsById);
+    const crossFloorPending = [];
 
-    const next = [];
-    for (const id of sorted) {
-      for (const neighbor of adj.get(id)) {
-        if (!seen.has(neighbor)) {
-          seen.add(neighbor);
-          next.push(neighbor);
+    while (sameFloorFrontier.length > 0) {
+      order.push(...sameFloorFrontier);
+
+      const next = [];
+      for (const id of sameFloorFrontier) {
+        for (const neighbor of sameFloorAdj.get(id)) {
+          if (!seen.has(neighbor)) {
+            seen.add(neighbor);
+            next.push(neighbor);
+          }
+        }
+        for (const neighbor of verticalAdj.get(id)) {
+          if (!seen.has(neighbor)) crossFloorPending.push(neighbor);
         }
       }
+      sameFloorFrontier = sortByPosition(next, roomsById);
     }
-    frontier = next;
+
+    const nextFloorEntries = [...new Set(crossFloorPending)].filter((id) => !seen.has(id));
+    for (const id of nextFloorEntries) seen.add(id);
+    frontier = sortByPosition(nextFloorEntries, roomsById);
   }
 
   // Rooms unreachable from the entrance (shouldn't happen post-validation)
@@ -71,11 +92,19 @@ function bfsOrder(rooms, adjacency, entranceRoomId) {
   return order;
 }
 
-function exitsFor(roomId, adjacency, labelByRoomId) {
+function exitsFor(roomId, adjacency, links, labelByRoomId) {
   const exits = [];
   for (const { a, b } of adjacency) {
     if (a === roomId) exits.push({ dir: 'n', toLabel: labelByRoomId.get(b), via: 'door' });
     if (b === roomId) exits.push({ dir: 's', toLabel: labelByRoomId.get(a), via: 'door' });
+  }
+  for (const link of links) {
+    if (link.roomIdFrom === roomId) {
+      exits.push({ dir: 'down', toLabel: labelByRoomId.get(link.roomIdTo), via: 'stair' });
+    }
+    if (link.roomIdTo === roomId) {
+      exits.push({ dir: 'up', toLabel: labelByRoomId.get(link.roomIdFrom), via: 'stair' });
+    }
   }
   return exits;
 }
@@ -103,9 +132,10 @@ function descriptionFor(role, exits, exitsInEntries) {
  * @param {{a:number,b:number}[]} adjacency
  * @param {number} entranceRoomId
  * @param {{scheme:string, numberJunctions:boolean, startAt:number, padTo:number, exitsInEntries:boolean}} keyConfig
+ * @param {import('../types.js').VerticalLink[]} [links]
  */
-export function buildKey(rooms, adjacency, entranceRoomId, keyConfig) {
-  const order = bfsOrder(rooms, adjacency, entranceRoomId);
+export function buildKey(rooms, adjacency, entranceRoomId, keyConfig, links = []) {
+  const order = bfsOrder(rooms, adjacency, links, entranceRoomId);
   const roomsById = new Map(rooms.map((r) => [r.id, r]));
 
   // Every Room is always numbered (SPEC §5.11 "toda Room, sempre"). `numberJunctions`
@@ -135,7 +165,7 @@ export function buildKey(rooms, adjacency, entranceRoomId, keyConfig) {
       roomId: id,
       cx: r.cx,
       cy: r.cy,
-      exits: exitsFor(id, adjacency, labelByRoomId),
+      exits: exitsFor(id, adjacency, links, labelByRoomId),
     };
   });
 

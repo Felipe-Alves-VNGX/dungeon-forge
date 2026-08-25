@@ -1,7 +1,7 @@
 // packages/core/test/stages/06-carve.test.js
 import { describe, it, expect } from 'vitest';
-import { CELL, createGrid, setCell, getCell, cellIndex } from '../../src/grid.js';
-import { carve } from '../../src/stages/06-carve.js';
+import { CELL, createGrid, setCell, getCell } from '../../src/grid.js';
+import { carve, thickenCorridors } from '../../src/stages/06-carve.js';
 
 const COSTS = { newHallway: 10, reuseHallway: 1, throughRoom: 50, turn: 2 };
 
@@ -83,5 +83,66 @@ describe('carve', () => {
     stampRoom(grid, r1, width, height);
     carve(grid, width, height, 0, [r0, r1], [{ a: 0, b: 1, weight: 1, kind: 'mst' }], COSTS);
     expect(grid.length).toBe(width * height);
+  });
+
+  it('carves a path from a room to a VerticalLink footprint on both floors it touches', () => {
+    const width = 20;
+    const height = 20;
+    const grid = createGrid(width, height, 2);
+    const r0 = { id: 0, floor: 0, x: 2, y: 2, w: 3, h: 3, cx: 3.5, cy: 3.5, role: 'filler', doors: [] };
+    const r1 = { id: 1, floor: 1, x: 14, y: 14, w: 3, h: 3, cx: 15.5, cy: 15.5, role: 'filler', doors: [] };
+    setCell(grid, 8, 8, 0, width, height, CELL.STAIR);
+    setCell(grid, 9, 8, 0, width, height, CELL.STAIR);
+    setCell(grid, 8, 8, 1, width, height, CELL.STAIR);
+    setCell(grid, 9, 8, 1, width, height, CELL.STAIR);
+    stampRoom(grid, r0, width, height);
+    stampRoom(grid, r1, width, height);
+
+    const link = {
+      id: 0, fromFloor: 0, toFloor: 1, x: 8, y: 8, w: 2, h: 1, kind: 'stair',
+      roomIdFrom: 0, roomIdTo: 1,
+    };
+
+    carve(grid, width, height, 0, [r0], [], COSTS, [link]);
+    carve(grid, width, height, 1, [r1], [], COSTS, [link]);
+
+    const floorSize = width * height;
+    const hallwayOnFloor0 = grid.slice(0, floorSize).filter((c) => c === CELL.HALLWAY).length;
+    const hallwayOnFloor1 = grid.slice(floorSize, 2 * floorSize).filter((c) => c === CELL.HALLWAY).length;
+    expect(hallwayOnFloor0).toBeGreaterThan(0);
+    expect(hallwayOnFloor1).toBeGreaterThan(0);
+  });
+});
+
+describe('thickenCorridors', () => {
+  it('widens a residual cell that touches a carved corridor', () => {
+    const width = 20;
+    const height = 20;
+    const grid = createGrid(width, height, 1);
+    setCell(grid, 5, 5, 0, width, height, CELL.HALLWAY);
+
+    const residualCells = [{ x: 4, y: 4, w: 3, h: 3 }];
+    thickenCorridors(grid, width, height, 0, residualCells);
+
+    for (let y = 4; y < 7; y++) {
+      for (let x = 4; x < 7; x++) {
+        expect(getCell(grid, x, y, 0, width, height)).toBe(CELL.HALLWAY);
+      }
+    }
+  });
+
+  it('leaves a residual cell untouched when it never touches a corridor', () => {
+    const width = 20;
+    const height = 20;
+    const grid = createGrid(width, height, 1);
+
+    const residualCells = [{ x: 4, y: 4, w: 3, h: 3 }];
+    thickenCorridors(grid, width, height, 0, residualCells);
+
+    for (let y = 4; y < 7; y++) {
+      for (let x = 4; x < 7; x++) {
+        expect(getCell(grid, x, y, 0, width, height)).toBe(CELL.EMPTY);
+      }
+    }
   });
 });

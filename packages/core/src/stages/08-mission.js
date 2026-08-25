@@ -52,8 +52,9 @@ function bfsPath(adj, startId, targetId) {
 /**
  * @param {import('../types.js').Room[]} rooms
  * @param {import('../types.js').Edge[]} edges
+ * @param {import('../types.js').VerticalLink[]} [links]
  */
-export function mission(rooms, edges) {
+export function mission(rooms, edges, links = []) {
   const adj = buildAdjacency(rooms, edges);
   const degree = new Map(rooms.map((r) => [r.id, adj.get(r.id).length]));
   const leaves = rooms.filter((r) => degree.get(r.id) === 1);
@@ -92,7 +93,10 @@ export function mission(rooms, edges) {
   const distFromEntrance = bfsDistances(adj, entrance.id);
 
   // treasure: leaves reachable from the rest of the graph ONLY via a cycle edge.
-  const mstOnlyDist = bfsDistances(adj, entrance.id, (kind) => kind === 'mst');
+  // 'vertical' edges are structural (a floor's only way up/down), same as 'mst' —
+  // only 'cycle' edges represent an optional path, so anything but 'cycle' counts
+  // as the "main structure" a leaf must be unreachable through to be treasure.
+  const mstOnlyDist = bfsDistances(adj, entrance.id, (kind) => kind !== 'cycle');
   const treasureLeaves = new Set();
   for (const leaf of leaves) {
     if (leaf.id === entrance.id) continue;
@@ -131,11 +135,21 @@ export function mission(rooms, edges) {
 
   const path = bfsPath(adj, entrance.id, climax.id);
 
+  const criticalLinks = [];
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i];
+    const b = path[i + 1];
+    const link = links.find(
+      (l) => (l.roomIdFrom === a && l.roomIdTo === b) || (l.roomIdFrom === b && l.roomIdTo === a)
+    );
+    if (link) criticalLinks.push(link.id);
+  }
+
   return {
     entranceRoomId: entrance.id,
     climaxRoomId: climax.id,
     path,
-    criticalLinks: [],
+    criticalLinks,
     optionalBranches: [],
   };
 }

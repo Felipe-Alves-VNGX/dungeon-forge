@@ -83,6 +83,44 @@ describe('buildKey', () => {
     const r2 = buildKey(rooms2, adjacency, 0, DEFAULT_KEY_CONFIG);
     expect(r1.areas.map((a) => a.label)).toEqual(r2.areas.map((a) => a.label));
   });
+
+  it('numbers every room on the current floor before crossing a VerticalLink (§5.11)', () => {
+    // floor0: 0(entrance) - 1 - 3, all same-floor. floor1: 2, reached only
+    // via a VerticalLink from room 1. All of floor 0 must be numbered
+    // before room 2 gets its number.
+    const rooms = [
+      room(0, 0, 0, 0, 'entrance'),
+      room(1, 0, 1, 0, 'filler'),
+      room(2, 1, 0, 0, 'filler'),
+      room(3, 0, 2, 0, 'filler'),
+    ];
+    const adjacency = [{ a: 0, b: 1 }, { a: 1, b: 3 }];
+    const links = [{ id: 0, fromFloor: 0, toFloor: 1, x: 0, y: 0, w: 2, h: 1, kind: 'stair', roomIdFrom: 1, roomIdTo: 2 }];
+
+    const { areas } = buildKey(rooms, adjacency, 0, DEFAULT_KEY_CONFIG, links);
+    const areaFor = (id) => areas.find((a) => a.roomId === id);
+
+    expect(areaFor(0).label).toBe('1-01');
+    expect(areaFor(1).label).toBe('1-02');
+    expect(areaFor(3).label).toBe('1-03');
+    expect(areaFor(2).label).toBe('2-01');
+  });
+
+  it('lists a stair exit on both ends of a VerticalLink with the right destination label', () => {
+    const rooms = [
+      room(0, 0, 0, 0, 'entrance'),
+      room(1, 0, 1, 0, 'filler'),
+      room(2, 1, 0, 0, 'filler'),
+    ];
+    const adjacency = [{ a: 0, b: 1 }];
+    const links = [{ id: 0, fromFloor: 0, toFloor: 1, x: 0, y: 0, w: 2, h: 1, kind: 'stair', roomIdFrom: 1, roomIdTo: 2 }];
+
+    const { areas } = buildKey(rooms, adjacency, 0, DEFAULT_KEY_CONFIG, links);
+    const areaFor = (id) => areas.find((a) => a.roomId === id);
+
+    expect(areaFor(1).exits).toContainEqual({ dir: 'down', toLabel: areaFor(2).label, via: 'stair' });
+    expect(areaFor(2).exits).toContainEqual({ dir: 'up', toLabel: areaFor(1).label, via: 'stair' });
+  });
 });
 
 describe('keyToMarkdown', () => {

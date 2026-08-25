@@ -79,6 +79,10 @@
  * @property {number} w
  * @property {number} h
  * @property {'stair'|'shaft'|'ladder'} kind
+ * @property {number} roomIdFrom     // nearest Room on fromFloor — not in SPEC.md's
+ * @property {number} roomIdTo       // minimal typedef, added so carve/mission/key can
+ *                                   // each resolve "which room, which link" without
+ *                                   // re-deriving nearest-room or coupling parallel arrays
  */
 
 /**

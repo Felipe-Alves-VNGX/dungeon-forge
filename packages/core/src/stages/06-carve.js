@@ -15,6 +15,12 @@ function cellCost(cellValue, costs) {
       return costs.reuseHallway;
     case CELL.ROOM:
       return costs.throughRoom;
+    // A stair footprint (stage 5) is a valid A* goal/waypoint — as cheap as
+    // an existing hallway. Without this case the default Infinity below
+    // makes every VerticalLink unreachable, since the goal cell itself
+    // would never be admitted into the open set.
+    case CELL.STAIR:
+      return costs.reuseHallway;
     default:
       return Infinity;
   }
@@ -83,14 +89,23 @@ function astar(grid, width, height, floor, start, goal, costs) {
   return null; // unreachable — caller decides how to handle (should not happen post-M2 given MST connectivity)
 }
 
+function carvePath(grid, width, height, floor, path) {
+  for (const node of path) {
+    if (getCell(grid, node.x, node.y, floor, width, height) === CELL.EMPTY) {
+      setCell(grid, node.x, node.y, floor, width, height, CELL.HALLWAY);
+    }
+  }
+}
+
 /**
  * @param {Uint8Array} grid
  * @param {number} width @param {number} height @param {number} floor
  * @param {import('../types.js').Room[]} rooms
  * @param {import('../types.js').Edge[]} edges
  * @param {import('../types.js').CarveCosts} costs
+ * @param {import('../types.js').VerticalLink[]} [links]
  */
-export function carve(grid, width, height, floor, rooms, edges, costs) {
+export function carve(grid, width, height, floor, rooms, edges, costs, links = []) {
   const roomsById = new Map(rooms.map((r) => [r.id, r]));
 
   const mst = edges.filter((e) => e.kind === 'mst');
@@ -104,10 +119,58 @@ export function carve(grid, width, height, floor, rooms, edges, costs) {
 
     const path = astar(grid, width, height, floor, start, goal, costs);
     if (!path) continue;
+    carvePath(grid, width, height, floor, path);
+  }
 
-    for (const node of path) {
-      if (getCell(grid, node.x, node.y, floor, width, height) === CELL.EMPTY) {
-        setCell(grid, node.x, node.y, floor, width, height, CELL.HALLWAY);
+  for (const link of links) {
+    if (link.fromFloor !== floor && link.toFloor !== floor) continue;
+    const roomId = link.fromFloor === floor ? link.roomIdFrom : link.roomIdTo;
+    const room = roomsById.get(roomId);
+    if (!room) continue;
+
+    const start = roomBoundaryCell(room);
+    const goal = { x: link.x, y: link.y };
+
+    const path = astar(grid, width, height, floor, start, goal, costs);
+    if (!path) continue;
+    carvePath(grid, width, height, floor, path);
+  }
+}
+
+/**
+ * Widens residual (unpromoted) room footprints from stage 1 into the
+ * corridor network wherever they touch a carved HALLWAY cell — SPEC.md
+ * §5.8's "engrossamento" — producing irregular, wider corridor stretches
+ * instead of uniformly 1-cell-wide paths. A residual cell that never
+ * touches a corridor stays untouched.
+ * @param {Uint8Array} grid
+ * @param {number} width @param {number} height @param {number} floor
+ * @param {{x:number,y:number,w:number,h:number}[]} residualCells
+ */
+export function thickenCorridors(grid, width, height, floor, residualCells) {
+  for (const cell of residualCells) {
+    const x0 = Math.max(0, cell.x);
+    const y0 = Math.max(0, cell.y);
+    const x1 = Math.min(width, cell.x + cell.w);
+    const y1 = Math.min(height, cell.y + cell.h);
+    if (x0 >= x1 || y0 >= y1) continue;
+
+    let touchesCorridor = false;
+    for (let y = y0; y < y1 && !touchesCorridor; y++) {
+      for (let x = x0; x < x1; x++) {
+        if (getCell(grid, x, y, floor, width, height) === CELL.HALLWAY) {
+          touchesCorridor = true;
+          break;
+        }
+      }
+    }
+    if (!touchesCorridor) continue;
+
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        if (getCell(grid, x, y, floor, width, height) === CELL.EMPTY) {
+          setCell(grid, x, y, floor, width, height, CELL.HALLWAY);
+        }
       }
     }
   }

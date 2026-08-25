@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { mission } from '../../src/stages/08-mission.js';
 
-function room(id, cx, cy) {
-  return { id, floor: 0, x: cx, y: cy, w: 1, h: 1, cx, cy, role: 'filler', doors: [] };
+function room(id, cx, cy, floor = 0) {
+  return { id, floor, x: cx, y: cy, w: 1, h: 1, cx, cy, role: 'filler', doors: [] };
 }
 
 describe('mission', () => {
@@ -84,5 +84,34 @@ describe('mission', () => {
     const r2 = mission(rooms2, edges);
     expect(r1.entranceRoomId).toBe(r2.entranceRoomId);
     expect(r1.climaxRoomId).toBe(r2.climaxRoomId);
+  });
+
+  it('a leaf only reachable via a vertical edge is not misdetected as treasure', () => {
+    // floor0: 0 - 1 (mst). floor1: 1 =(vertical)= 2, room 2 a leaf.
+    // Room 2 is reachable from the entrance only by crossing the vertical
+    // edge — it must NOT be flagged treasure just because there's no
+    // 'mst'-kind path to it (only 'cycle'-only reachability should count).
+    const rooms = [room(0, 0, 0, 0), room(1, 1, 0, 0), room(2, 0, 0, 1)];
+    const edges = [
+      { a: 0, b: 1, weight: 1, kind: 'mst' },
+      { a: 1, b: 2, weight: 1, kind: 'vertical' },
+    ];
+    const links = [{ id: 0, fromFloor: 0, toFloor: 1, x: 0, y: 0, w: 2, h: 1, kind: 'stair', roomIdFrom: 1, roomIdTo: 2 }];
+    mission(rooms, edges, links);
+    expect(rooms.find((r) => r.id === 2).role).not.toBe('treasure');
+  });
+
+  it('computes criticalLinks for VerticalLinks on the entrance-to-climax path', () => {
+    const rooms = [room(0, 0, 0, 0), room(1, 1, 0, 0), room(2, 0, 0, 1), room(3, 1, 0, 1)];
+    const edges = [
+      { a: 0, b: 1, weight: 1, kind: 'mst' },
+      { a: 1, b: 2, weight: 1, kind: 'vertical' },
+      { a: 2, b: 3, weight: 1, kind: 'mst' },
+    ];
+    const links = [{ id: 0, fromFloor: 0, toFloor: 1, x: 0, y: 0, w: 2, h: 1, kind: 'stair', roomIdFrom: 1, roomIdTo: 2 }];
+    const result = mission(rooms, edges, links);
+    expect(result.entranceRoomId).toBe(0);
+    expect(result.climaxRoomId).toBe(3);
+    expect(result.criticalLinks).toEqual([0]);
   });
 });
