@@ -142,13 +142,6 @@
  */
 
 /**
- * @typedef {Object} Issue
- * @property {number} rule        // 1-15, SPEC.md §6 invariant number
- * @property {string} message     // human-readable, includes enough context to locate the problem
- * @property {number} [floor]
- */
-
-/**
  * @typedef {Object} Dungeon
  * @property {Config} config
  * @property {string} seed
