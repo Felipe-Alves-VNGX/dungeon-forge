@@ -1,0 +1,36 @@
+name: Property test — 10k seeds (SPEC.md §6)
+
+# The default `npm test` run (see ci.yml) already runs property.test.js at
+# its fast default (30 seeds x 4 configs) on every push/PR. SPEC.md §6 calls
+# for the full 10,000-seed sweep in CI, but running that on every push would
+# take ~2-3 hours — instead it runs weekly and on demand, so a bad seed still
+# surfaces regularly without slowing down the normal push/PR feedback loop.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1' # every Monday, 03:00 UTC
+
+jobs:
+  property:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - name: Run validateDungeon over 10,000 seeds per config
+        env:
+          DUNGEON_FORGE_PROPERTY_SEEDS: '10000'
+        run: |
+          set -o pipefail
+          npx vitest run packages/core/test/property.test.js | tee property-10k.log
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: property-10k-log
+          path: property-10k.log
