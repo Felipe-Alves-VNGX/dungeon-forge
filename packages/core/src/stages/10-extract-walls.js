@@ -37,12 +37,22 @@ function collectSilhouetteEdges(grid, width, height, floor) {
   return { horizontal, vertical };
 }
 
+function isDoorOpening(cellValue) {
+  // HALLWAY is the common case. STAIR also counts: a VerticalLink footprint
+  // is walkable (§5.2) and so — like a hallway — never shows up as a
+  // silhouette wall transition against a room (both sides are walkable). A
+  // room edge bordering a stair directly (no hallway cell in between) would
+  // otherwise get neither a wall nor a door: a real gap in the geometry, and
+  // the room would carry zero registered doors despite being reachable.
+  return cellValue === CELL.HALLWAY || cellValue === CELL.STAIR;
+}
+
 /**
  * Doors are NOT a byproduct of the silhouette pass: a room's wall directly
- * adjoining a hallway has no walkability transition (both are walkable), so
- * it never appears as a silhouette edge. This pass walks each room's
- * rectangle perimeter directly and checks the single cell immediately
- * outside each boundary unit-cell.
+ * adjoining a hallway (or stair — see isDoorOpening) has no walkability
+ * transition (both sides are walkable), so it never appears as a silhouette
+ * edge. This pass walks each room's rectangle perimeter directly and checks
+ * the single cell immediately outside each boundary unit-cell.
  */
 function collectDoorEdges(grid, width, height, floor, rooms) {
   const horizontal = []; // door edge at row y, between (x,y-1) and (x,y)
@@ -51,25 +61,25 @@ function collectDoorEdges(grid, width, height, floor, rooms) {
   for (const room of rooms) {
     // North edge: outside cell is (x, room.y - 1)
     for (let x = room.x; x < room.x + room.w; x++) {
-      if (cellValueAt(grid, x, room.y - 1, floor, width, height) === CELL.HALLWAY) {
+      if (isDoorOpening(cellValueAt(grid, x, room.y - 1, floor, width, height))) {
         horizontal.push({ x, y: room.y, roomId: room.id });
       }
     }
     // South edge: outside cell is (x, room.y + room.h)
     for (let x = room.x; x < room.x + room.w; x++) {
-      if (cellValueAt(grid, x, room.y + room.h, floor, width, height) === CELL.HALLWAY) {
+      if (isDoorOpening(cellValueAt(grid, x, room.y + room.h, floor, width, height))) {
         horizontal.push({ x, y: room.y + room.h, roomId: room.id });
       }
     }
     // West edge: outside cell is (room.x - 1, y)
     for (let y = room.y; y < room.y + room.h; y++) {
-      if (cellValueAt(grid, room.x - 1, y, floor, width, height) === CELL.HALLWAY) {
+      if (isDoorOpening(cellValueAt(grid, room.x - 1, y, floor, width, height))) {
         vertical.push({ x: room.x, y, roomId: room.id });
       }
     }
     // East edge: outside cell is (room.x + room.w, y)
     for (let y = room.y; y < room.y + room.h; y++) {
-      if (cellValueAt(grid, room.x + room.w, y, floor, width, height) === CELL.HALLWAY) {
+      if (isDoorOpening(cellValueAt(grid, room.x + room.w, y, floor, width, height))) {
         vertical.push({ x: room.x + room.w, y, roomId: room.id });
       }
     }
