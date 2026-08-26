@@ -430,7 +430,7 @@ function checkAnchorsValid(dungeon, errors) {
 const ROLE_LEGEND_KINDS = new Set(['entrance', 'climax', 'treasure', 'junction']);
 
 function checkLegendFidelity(dungeon, errors) {
-  const { rooms, links, key } = dungeon;
+  const { rooms, links, doors = [], key } = dungeon;
   const rolesPresent = new Set(rooms.map((r) => r.role));
   const legendKinds = new Set(key.legend.map((s) => s.kind));
 
@@ -458,6 +458,15 @@ function checkLegendFidelity(dungeon, errors) {
     if (!hasLinks && legendKinds.has(kind)) {
       errors.push(issue('legend-symbol-unused', `legend declares "${kind}" but this dungeon has no links`, { kind }));
     }
+  }
+
+  // Same shape again for 'secret': present iff some Door is actually secret.
+  const hasSecretDoors = doors.some((d) => d.secret);
+  if (hasSecretDoors && !legendKinds.has('secret')) {
+    errors.push(issue('legend-missing-symbol', 'a secret door exists but the legend has no "secret" symbol', { kind: 'secret' }));
+  }
+  if (!hasSecretDoors && legendKinds.has('secret')) {
+    errors.push(issue('legend-symbol-unused', 'legend declares "secret" but no door in this dungeon is secret', { kind: 'secret' }));
   }
 }
 

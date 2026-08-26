@@ -109,7 +109,7 @@ function exitsFor(roomId, adjacency, links, labelByRoomId) {
   return exits;
 }
 
-function descriptionFor(role, exits, exitsInEntries) {
+function descriptionFor(role, exits, exitsInEntries, hasSecretDoor) {
   const exitLines = exitsInEntries
     ? exits.map((e) => `${e.dir.toUpperCase()} → ${e.toLabel}`).join(', ')
     : '';
@@ -118,8 +118,10 @@ function descriptionFor(role, exits, exitsInEntries) {
       return `Aponta as saídas e o que se vê do umbral. ${exitLines}`.trim();
     case 'climax':
       return `Ponto mais distante da entrada. ${exitLines}`.trim();
-    case 'treasure':
-      return `Ramo opcional, alcançável só por um caminho alternativo. ${exitLines}`.trim();
+    case 'treasure': {
+      const secretNote = hasSecretDoor ? ' Uma das entradas é secreta.' : '';
+      return `Ramo opcional, alcançável só por um caminho alternativo.${secretNote} ${exitLines}`.trim();
+    }
     case 'junction':
       return `Encruzilhada com ${exits.length} saídas. ${exitLines}`.trim();
     default:
@@ -133,8 +135,9 @@ function descriptionFor(role, exits, exitsInEntries) {
  * @param {number} entranceRoomId
  * @param {{scheme:string, numberJunctions:boolean, startAt:number, padTo:number, exitsInEntries:boolean}} keyConfig
  * @param {import('../types.js').VerticalLink[]} [links]
+ * @param {import('../types.js').Door[]} [doors]
  */
-export function buildKey(rooms, adjacency, entranceRoomId, keyConfig, links = []) {
+export function buildKey(rooms, adjacency, entranceRoomId, keyConfig, links = [], doors = []) {
   const order = bfsOrder(rooms, adjacency, links, entranceRoomId);
   const roomsById = new Map(rooms.map((r) => [r.id, r]));
 
@@ -169,14 +172,16 @@ export function buildKey(rooms, adjacency, entranceRoomId, keyConfig, links = []
     };
   });
 
+  const doorsById = new Map(doors.map((d) => [d.id, d]));
   const entries = areas.map((area) => {
     const room = roomsById.get(area.roomId);
     const title = TITLE_BY_ROLE[room.role] ?? `Área ${area.label}`;
+    const hasSecretDoor = room.doors.some((id) => doorsById.get(id)?.secret);
     return {
       areaId: area.id,
       label: area.label,
       title,
-      description: descriptionFor(room.role, area.exits, keyConfig.exitsInEntries),
+      description: descriptionFor(room.role, area.exits, keyConfig.exitsInEntries, hasSecretDoor),
       tags: [room.role],
     };
   });
@@ -189,6 +194,9 @@ export function buildKey(rooms, adjacency, entranceRoomId, keyConfig, links = []
   if (links.length > 0) {
     legend.push({ kind: 'stairUp', caption: 'Escada subindo' });
     legend.push({ kind: 'stairDown', caption: 'Escada descendo' });
+  }
+  if (doors.some((d) => d.secret)) {
+    legend.push({ kind: 'secret', caption: 'Porta secreta' });
   }
 
   const byLabel = Object.fromEntries(areas.map((a) => [a.label, a.id]));

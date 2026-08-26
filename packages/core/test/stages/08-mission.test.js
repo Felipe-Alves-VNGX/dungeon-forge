@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mission } from '../../src/stages/08-mission.js';
+import { mission, assignSecretDoors } from '../../src/stages/08-mission.js';
 
 function room(id, cx, cy, floor = 0) {
   return { id, floor, x: cx, y: cy, w: 1, h: 1, cx, cy, role: 'filler', doors: [] };
@@ -33,19 +33,28 @@ describe('mission', () => {
     expect(result.entranceRoomId).not.toBe(result.climaxRoomId);
   });
 
-  it('marks rooms reachable only via a cycle edge as treasure', () => {
-    // 0-1-2 is the MST chain; 0-2 is a cycle edge, making room 2 reachable
-    // by both the chain and the cycle, but a room hanging *only* off the
-    // cycle edge (room 3, linked only to 2 via cycle) should be treasure.
-    const rooms = [room(0, 0, 0), room(1, 1, 0), room(2, 2, 0), room(3, 3, 3)];
+  it('marks a structural dead end with a bonus cycle edge as treasure', () => {
+    // spanningTree() always spans every room, so every room has >=1
+    // non-cycle edge — a room can never be treasure by "reachable ONLY via
+    // a cycle edge" taken literally. The achievable analogue: a dead end of
+    // the structural (mst+vertical) graph that also picked up a cycle edge,
+    // giving it exactly one bonus/alternate route in.
+    // Chain 0-1-2-3 (room 3 a plain leaf, no cycle edge — must NOT be
+    // treasure); room 4 hangs off room 2 by a single mst edge (a structural
+    // leaf) and also gets a cycle edge back to room 0 (its bonus route).
+    const rooms = [room(0, 0, 0), room(1, 1, 0), room(2, 2, 0), room(3, 3, 0), room(4, 2, 2)];
     const edges = [
       { a: 0, b: 1, weight: 1, kind: 'mst' },
       { a: 1, b: 2, weight: 1, kind: 'mst' },
-      { a: 2, b: 3, weight: 1, kind: 'cycle' },
+      { a: 2, b: 3, weight: 1, kind: 'mst' },
+      { a: 2, b: 4, weight: 1, kind: 'mst' },
+      { a: 0, b: 4, weight: 1, kind: 'cycle' },
     ];
     mission(rooms, edges);
-    const room3 = rooms.find((r) => r.id === 3);
-    expect(room3.role).toBe('treasure');
+    expect(rooms.find((r) => r.id === 4).role).toBe('treasure');
+    // A plain mst-only leaf (no cycle edge) is a dead end but not "optional
+    // via a bonus route" — it must not be misdetected as treasure.
+    expect(rooms.find((r) => r.id === 3).role).not.toBe('treasure');
   });
 
   it('marks degree >=3 rooms as junction (when not entrance/climax/treasure)', () => {
@@ -113,5 +122,38 @@ describe('mission', () => {
     expect(result.entranceRoomId).toBe(0);
     expect(result.climaxRoomId).toBe(3);
     expect(result.criticalLinks).toEqual([0]);
+  });
+});
+
+describe('assignSecretDoors', () => {
+  function treasureRoom(id, doorIds) {
+    return { id, floor: 0, x: 0, y: 0, w: 1, h: 1, cx: 0, cy: 0, role: 'treasure', doors: doorIds };
+  }
+  function door(id, secret = false) {
+    return { id, floor: 0, x1: 0, y1: 0, x2: 1, y2: 0, roomId: 0, secret };
+  }
+
+  it('marks exactly one door secret on a treasure room with >=2 doors', () => {
+    const rooms = [treasureRoom(0, [10, 11])];
+    const doors = [door(10), door(11)];
+    assignSecretDoors(rooms, doors);
+    const secretCount = doors.filter((d) => d.secret).length;
+    expect(secretCount).toBe(1);
+    // The room's discoverable side must survive: not every door is secret.
+    expect(doors.some((d) => !d.secret)).toBe(true);
+  });
+
+  it('leaves a treasure room with only one door untouched (must stay discoverable)', () => {
+    const rooms = [treasureRoom(0, [10])];
+    const doors = [door(10)];
+    assignSecretDoors(rooms, doors);
+    expect(doors[0].secret).toBe(false);
+  });
+
+  it('never marks doors secret on non-treasure rooms', () => {
+    const rooms = [{ id: 0, floor: 0, x: 0, y: 0, w: 1, h: 1, cx: 0, cy: 0, role: 'junction', doors: [10, 11] }];
+    const doors = [door(10), door(11)];
+    assignSecretDoors(rooms, doors);
+    expect(doors.every((d) => !d.secret)).toBe(true);
   });
 });

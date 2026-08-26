@@ -92,23 +92,29 @@ export function mission(rooms, edges, links = []) {
 
   const distFromEntrance = bfsDistances(adj, entrance.id);
 
-  // treasure: leaves reachable from the rest of the graph ONLY via a cycle edge.
-  // 'vertical' edges are structural (a floor's only way up/down), same as 'mst' —
-  // only 'cycle' edges represent an optional path, so anything but 'cycle' counts
-  // as the "main structure" a leaf must be unreachable through to be treasure.
-  const mstOnlyDist = bfsDistances(adj, entrance.id, (kind) => kind !== 'cycle');
-  const treasureLeaves = new Set();
-  for (const leaf of leaves) {
-    if (leaf.id === entrance.id) continue;
-    if (!mstOnlyDist.has(leaf.id)) {
-      treasureLeaves.add(leaf.id);
-      leaf.role = 'treasure';
+  // treasure: a dead end of the *structural* graph (mst+vertical edges only —
+  // the backbone that's guaranteed connected) that also picked up a 'cycle'
+  // edge. A plain leaf of the combined graph can never satisfy "reachable
+  // only via cycle edges" literally — spanningTree() is a spanning tree over
+  // every room, so every room always has >=1 non-cycle edge — this is the
+  // closest achievable reading: a dead end with exactly one bonus/alternate
+  // route in, which is what descriptionFor()'s treasure text already says.
+  const structuralDegree = new Map(rooms.map((r) => [r.id, 0]));
+  for (const r of rooms) {
+    structuralDegree.set(r.id, adj.get(r.id).filter((e) => e.kind !== 'cycle').length);
+  }
+  const treasureIds = new Set();
+  for (const r of rooms) {
+    if (r.id === entrance.id) continue;
+    if (structuralDegree.get(r.id) === 1 && degree.get(r.id) >= 2) {
+      treasureIds.add(r.id);
+      r.role = 'treasure';
     }
   }
 
   const deepestFloor = Math.max(...rooms.map((r) => r.floor));
-  const climaxCandidates = leaves.filter((r) => r.id !== entrance.id && !treasureLeaves.has(r.id));
-  const pickPool = climaxCandidates.length > 0 ? climaxCandidates : rooms.filter((r) => r.id !== entrance.id && !treasureLeaves.has(r.id));
+  const climaxCandidates = leaves.filter((r) => r.id !== entrance.id && !treasureIds.has(r.id));
+  const pickPool = climaxCandidates.length > 0 ? climaxCandidates : rooms.filter((r) => r.id !== entrance.id && !treasureIds.has(r.id));
   const climax = pickPool.reduce((best, r) => {
     const rEcc = distFromEntrance.get(r.id) ?? -1;
     const bestEcc = distFromEntrance.get(best.id) ?? -1;
@@ -152,4 +158,22 @@ export function mission(rooms, edges, links = []) {
     criticalLinks,
     optionalBranches: [],
   };
+}
+
+/**
+ * Marks one door of each treasure room as secret — SPEC.md §5.10's "fase 2"
+ * key/lock idea, scoped down: a treasure room already has an alternate
+ * (cycle-edge) route in by construction, so hiding one of its doors gives it
+ * a genuine secret entrance without ever making the room unreachable. Rooms
+ * with only one door are left alone (that door must stay discoverable).
+ * @param {import('../types.js').Room[]} rooms
+ * @param {import('../types.js').Door[]} doors
+ */
+export function assignSecretDoors(rooms, doors) {
+  const doorsById = new Map(doors.map((d) => [d.id, d]));
+  for (const room of rooms) {
+    if (room.role !== 'treasure' || room.doors.length < 2) continue;
+    const door = doorsById.get(room.doors[room.doors.length - 1]);
+    if (door) door.secret = true;
+  }
 }

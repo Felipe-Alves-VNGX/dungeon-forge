@@ -36,6 +36,14 @@ describe('buildRenderPlan', () => {
     expect(plan.wallLines.some((w) => !w.isDoor)).toBe(true);
   });
 
+  it('renders a secret door as a plain wall — the image must not give it away', () => {
+    const dungeon = fakeDungeon();
+    dungeon.doors = [{ id: 0, floor: 0, x1: 2, y1: 0, x2: 3, y2: 0, roomId: 0, secret: true }];
+    const plan = buildRenderPlan(dungeon, 0, 100);
+    const secretWall = plan.wallLines.find((w) => w.x1 === 200 && w.x2 === 300);
+    expect(secretWall.isDoor).toBe(false);
+  });
+
   it('computes pixel width/height from cell width/height and gridSize', () => {
     const plan = buildRenderPlan(fakeDungeon(), 0, 100);
     expect(plan.width).toBe(500);

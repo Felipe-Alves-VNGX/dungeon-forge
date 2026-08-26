@@ -255,6 +255,22 @@ describe('validateDungeon', () => {
     expect(errors.filter((e) => e.code === 'legend-symbol-unused' && (e.kind === 'stairUp' || e.kind === 'stairDown'))).toHaveLength(2);
   });
 
+  it('flags a legend with no secret symbol when a door is secret', () => {
+    const d = baseDungeon();
+    d.doors[0].secret = true;
+    const { ok, errors } = validateDungeon(d);
+    expect(ok).toBe(false);
+    expect(errors.some((e) => e.code === 'legend-missing-symbol' && e.kind === 'secret')).toBe(true);
+  });
+
+  it('flags a legend declaring secret when no door is secret', () => {
+    const d = baseDungeon();
+    d.key.legend.push({ kind: 'secret', caption: 'Porta secreta' });
+    const { ok, errors } = validateDungeon(d);
+    expect(ok).toBe(false);
+    expect(errors.some((e) => e.code === 'legend-symbol-unused' && e.kind === 'secret')).toBe(true);
+  });
+
   it('flags areas.length + links.length*2 over the 60 note budget', () => {
     const d = baseDungeon();
     d.links = Array.from({ length: 30 }, (_, i) => ({ id: i, fromFloor: 0, toFloor: 1, x: 0, y: 0, w: 1, h: 1, kind: 'stair' }));

@@ -8,7 +8,7 @@ import { addCycles } from './stages/04-add-cycles.js';
 import { verticalLinks } from './stages/05-vertical-links.js';
 import { carve, thickenCorridors } from './stages/06-carve.js';
 import { prune } from './stages/07-prune.js';
-import { mission } from './stages/08-mission.js';
+import { mission, assignSecretDoors } from './stages/08-mission.js';
 import { buildKey, keyToMarkdown } from './stages/09-key.js';
 import { extractWalls } from './stages/10-extract-walls.js';
 import { validateDungeon } from './validate.js';
@@ -152,10 +152,11 @@ export function generateDungeon(config) {
   }
 
   const missionResult = mission(rooms, edges, links);
+  assignSecretDoors(rooms, doors);
 
   const roomAdjacency = edges.filter((e) => e.kind !== 'vertical').map((e) => ({ a: e.a, b: e.b }));
   const { areas, key } = buildKey(
-    rooms, roomAdjacency, missionResult.entranceRoomId, config.key, links
+    rooms, roomAdjacency, missionResult.entranceRoomId, config.key, links, doors
   );
 
   return {

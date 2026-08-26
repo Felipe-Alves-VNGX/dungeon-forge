@@ -135,6 +135,25 @@ describe('buildKey', () => {
     expect(areaFor(1).exits).toContainEqual({ dir: 'down', toLabel: areaFor(2).label, via: 'stair' });
     expect(areaFor(2).exits).toContainEqual({ dir: 'up', toLabel: areaFor(1).label, via: 'stair' });
   });
+
+  it('legend includes secret iff a door is secret, and mentions it in the treasure room description', () => {
+    const treasureRoomObj = room(1, 0, 1, 0, 'treasure');
+    treasureRoomObj.doors = [100, 101];
+    const rooms = [room(0, 0, 0, 0, 'entrance'), treasureRoomObj];
+    const adjacency = [{ a: 0, b: 1 }];
+    const doors = [
+      { id: 100, floor: 0, x1: 0, y1: 0, x2: 1, y2: 0, roomId: 1, secret: false },
+      { id: 101, floor: 0, x1: 0, y1: 0, x2: 1, y2: 0, roomId: 1, secret: true },
+    ];
+
+    const withoutDoors = buildKey(rooms, adjacency, 0, DEFAULT_KEY_CONFIG);
+    expect(withoutDoors.key.legend.some((s) => s.kind === 'secret')).toBe(false);
+
+    const { key } = buildKey(rooms, adjacency, 0, DEFAULT_KEY_CONFIG, [], doors);
+    expect(key.legend.some((s) => s.kind === 'secret')).toBe(true);
+    const treasureEntry = key.entries.find((e) => e.tags.includes('treasure'));
+    expect(treasureEntry.description).toContain('secreta');
+  });
 });
 
 describe('keyToMarkdown', () => {
