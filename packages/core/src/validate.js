@@ -430,7 +430,7 @@ function checkAnchorsValid(dungeon, errors) {
 const ROLE_LEGEND_KINDS = new Set(['entrance', 'climax', 'treasure', 'junction']);
 
 function checkLegendFidelity(dungeon, errors) {
-  const { rooms, key } = dungeon;
+  const { rooms, links, key } = dungeon;
   const rolesPresent = new Set(rooms.map((r) => r.role));
   const legendKinds = new Set(key.legend.map((s) => s.kind));
 
@@ -443,6 +443,20 @@ function checkLegendFidelity(dungeon, errors) {
   for (const role of rolesPresent) {
     if (ROLE_LEGEND_KINDS.has(role) && !legendKinds.has(role)) {
       errors.push(issue('legend-missing-symbol', `role "${role}" is present but has no legend symbol`, { role }));
+    }
+  }
+
+  // SPEC.md §5.11's legend table lists stairUp/stairDown ("Note de escada,
+  // sem número") whenever the dungeon has any VerticalLink at all — they're
+  // not tied to a Room role like the symbols above, so they need their own
+  // presence/absence check in both directions.
+  const hasLinks = links.length > 0;
+  for (const kind of ['stairUp', 'stairDown']) {
+    if (hasLinks && !legendKinds.has(kind)) {
+      errors.push(issue('legend-missing-symbol', `links exist but the legend has no "${kind}" symbol`, { kind }));
+    }
+    if (!hasLinks && legendKinds.has(kind)) {
+      errors.push(issue('legend-symbol-unused', `legend declares "${kind}" but this dungeon has no links`, { kind }));
     }
   }
 }

@@ -239,6 +239,22 @@ describe('validateDungeon', () => {
     expect(errors.some((e) => e.code === 'legend-missing-symbol')).toBe(true);
   });
 
+  it('flags a legend with no stairUp/stairDown when links exist (SPEC.md §5.11)', () => {
+    const d = baseDungeon();
+    d.links = [{ id: 0, fromFloor: 0, toFloor: 1, x: 0, y: 0, w: 2, h: 1, kind: 'stair' }];
+    const { ok, errors } = validateDungeon(d);
+    expect(ok).toBe(false);
+    expect(errors.filter((e) => e.code === 'legend-missing-symbol' && (e.kind === 'stairUp' || e.kind === 'stairDown'))).toHaveLength(2);
+  });
+
+  it('flags a legend declaring stairUp/stairDown when there are no links', () => {
+    const d = baseDungeon();
+    d.key.legend.push({ kind: 'stairUp', caption: 'Escada subindo' }, { kind: 'stairDown', caption: 'Escada descendo' });
+    const { ok, errors } = validateDungeon(d);
+    expect(ok).toBe(false);
+    expect(errors.filter((e) => e.code === 'legend-symbol-unused' && (e.kind === 'stairUp' || e.kind === 'stairDown'))).toHaveLength(2);
+  });
+
   it('flags areas.length + links.length*2 over the 60 note budget', () => {
     const d = baseDungeon();
     d.links = Array.from({ length: 30 }, (_, i) => ({ id: i, fromFloor: 0, toFloor: 1, x: 0, y: 0, w: 1, h: 1, kind: 'stair' }));
