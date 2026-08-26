@@ -1,6 +1,7 @@
 // packages/core/test/pipeline.test.js
 import { describe, it, expect } from 'vitest';
 import { generateDungeon } from '../src/pipeline.js';
+import { validateDungeon } from '../src/validate.js';
 import { CELL } from '../src/grid.js';
 
 const CONFIG = {
@@ -135,5 +136,36 @@ describe('generateDungeon — multi-floor (M5)', () => {
     const b = generateDungeon(MULTI_CONFIG);
     const serialize = (d) => JSON.stringify({ ...d, cells: Array.from(d.cells) });
     expect(serialize(a)).toEqual(serialize(b));
+  });
+});
+
+describe('generateDungeon — validator regressions (M7)', () => {
+  const MULTI_CONFIG = { ...CONFIG, floors: 3 };
+
+  // These two seeds used to produce a Room with zero doors under this exact
+  // config: the boundary clamp in pipeline.js pushed two rooms flush against
+  // each other (zero gap), so carve()'s A* between their centroids walked
+  // straight through ROOM cells the whole way — nothing EMPTY to convert to
+  // HALLWAY — and extractWalls never finds a door without one. Fixed by
+  // separateClampedRooms() restoring stage 1's >=1-cell-gap invariant after
+  // the clamp.
+  it('does not orphan a room when the boundary clamp would have left two rooms touching (seed-4)', () => {
+    const dungeon = generateDungeon({ ...MULTI_CONFIG, seed: 'seed-4' });
+    const { ok, errors } = validateDungeon(dungeon);
+    expect(errors).toEqual([]);
+    expect(ok).toBe(true);
+  });
+
+  // This seed used to trip 'link-inaccessible': two VerticalLinks from
+  // adjacent floor gaps landed with STAIR footprints immediately next to
+  // each other on their shared floor (stage 5 only enforces separation
+  // within one gap, not across gaps) — a real, legitimate layout, but one
+  // that also used to expose a validator bug (see validate.test.js) where
+  // a STAIR-only neighbor wasn't counted as "accessible".
+  it('accepts two VerticalLinks whose STAIR footprints land adjacent to each other (seed-23)', () => {
+    const dungeon = generateDungeon({ ...MULTI_CONFIG, seed: 'seed-23' });
+    const { ok, errors } = validateDungeon(dungeon);
+    expect(errors).toEqual([]);
+    expect(ok).toBe(true);
   });
 });

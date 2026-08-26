@@ -11,6 +11,56 @@ import { prune } from './stages/07-prune.js';
 import { mission } from './stages/08-mission.js';
 import { buildKey, keyToMarkdown } from './stages/09-key.js';
 import { extractWalls } from './stages/10-extract-walls.js';
+import { validateDungeon } from './validate.js';
+
+// Clamping an out-of-bounds room straight into bounds (below) can leave it
+// touching or overlapping an already in-bounds neighbor — breaking stage 1's
+// own invariant ("toda sala tem >=1 célula de folga em cada lado"). That's
+// not cosmetic: when two rooms end up with zero gap, carve's A* between
+// their centroids walks straight through ROOM cells the whole way (nothing
+// EMPTY to convert to HALLWAY), so no corridor — and therefore no door —
+// ever gets carved between them, silently orphaning whichever room has no
+// other edge. Re-run the same steering-separation push stage 1 already uses
+// (see 01-place-rooms.js), just with a required 1-cell gap and a reclamp
+// each pass, until no pair overlaps. A no-op (0 iterations of actual push)
+// whenever clamping didn't introduce an overlap, so it never perturbs a
+// layout that was already valid.
+function separateClampedRooms(floorRooms, width, height) {
+  for (let pass = 0; pass < 60; pass++) {
+    let anyOverlap = false;
+    for (const a of floorRooms) {
+      let pushX = 0;
+      let pushY = 0;
+      for (const b of floorRooms) {
+        if (a === b) continue;
+        const dx = (a.x + a.w / 2) - (b.x + b.w / 2);
+        const dy = (a.y + a.h / 2) - (b.y + b.h / 2);
+        const overlapX = (a.w + b.w) / 2 + 1 - Math.abs(dx);
+        const overlapY = (a.h + b.h) / 2 + 1 - Math.abs(dy);
+        if (overlapX > 0 && overlapY > 0) {
+          anyOverlap = true;
+          const dist = Math.hypot(dx, dy) || 0.0001;
+          pushX += (dx / dist) * overlapX * 0.5;
+          pushY += (dy / dist) * overlapY * 0.5;
+        }
+      }
+      // Round away from zero with a 1-cell floor: a plain Math.round can
+      // land back on the same integer every pass when the summed push is
+      // under 0.5 (common with the *0.5 damping above plus two rooms
+      // pushing each other by comparable amounts), stalling forever exactly
+      // 1 cell short of resolving the overlap.
+      const stepX = pushX === 0 ? 0 : Math.sign(pushX) * Math.max(1, Math.round(Math.abs(pushX)));
+      const stepY = pushY === 0 ? 0 : Math.sign(pushY) * Math.max(1, Math.round(Math.abs(pushY)));
+      a.x = Math.max(0, Math.min(a.x + stepX, width - a.w));
+      a.y = Math.max(0, Math.min(a.y + stepY, height - a.h));
+    }
+    if (!anyOverlap) break;
+  }
+  for (const room of floorRooms) {
+    room.cx = room.x + room.w / 2;
+    room.cy = room.y + room.h / 2;
+  }
+}
 
 /** @param {import('./types.js').Config} config */
 export function generateDungeon(config) {
@@ -31,15 +81,15 @@ export function generateDungeon(config) {
 
       // Defensive clamp: steering separation in placeRooms can still push a
       // room's centroid beyond the initial spawn disk in some seeds, landing
-      // it partially or fully outside the grid. Clamp position into bounds and
-      // recompute the centroid before stamping the grid or running any other
-      // stage. This can rarely nudge a clamped room into overlapping an
-      // in-bounds neighbor — harmless at this scope (see task brief).
+      // it partially or fully outside the grid. Clamp position into bounds
+      // before stamping the grid or running any other stage.
       room.x = Math.max(0, Math.min(room.x, config.width - room.w));
       room.y = Math.max(0, Math.min(room.y, config.height - room.h));
       room.cx = room.x + room.w / 2;
       room.cy = room.y + room.h / 2;
     }
+
+    separateClampedRooms(floorRooms, config.width, config.height);
 
     for (const room of floorRooms) {
       for (let y = room.y; y < room.y + room.h; y++) {
@@ -126,4 +176,4 @@ export function generateDungeon(config) {
   };
 }
 
-export { keyToMarkdown };
+export { keyToMarkdown, validateDungeon };
