@@ -43,6 +43,20 @@
         background: #1a1a1a; color: #eee; border: 1px solid #444; font-family: inherit; padding: 0.4rem;
       }
       .empty { color: #777; font-style: italic; font-size: 0.85rem; }
+
+      #floor-editor-section { margin-top: 2rem; border-top: 1px solid #333; padding-top: 1.5rem; }
+      #floor-editor-section h2 { font-size: 1rem; margin: 0 0 0.25rem; }
+      #floor-editor-note { font-size: 0.78rem; color: #a08050; margin: 0 0 0.75rem; max-width: 46rem; }
+      #floor-editor { max-width: 100%; overflow: auto; border: 1px solid #444; background: #161616; }
+      .floor-editor-svg { display: block; max-width: 100%; height: auto; }
+      .edit-bg { fill: #1a1a1a; }
+      .edit-wall { stroke: #666; stroke-width: 2; }
+      .edit-door { stroke: #c8963e; }
+      .editable-room { cursor: grab; }
+      .editable-room.dragging { cursor: grabbing; }
+      .edit-room-rect { fill: #2a3a2a; stroke: #6a8a6a; stroke-width: 1.5; }
+      .editable-room.dragging .edit-room-rect { fill: #3a4a3a; stroke: #9fd; }
+      .edit-room-label { font-size: 11px; fill: #cde; pointer-events: none; user-select: none; }
     </style>
   </head>
   <body>
@@ -54,6 +68,12 @@
     <img id="floor-image" alt="andar gerado" />
     <h2>Chave (markdown)</h2>
     <pre id="key-markdown"></pre>
+
+    <section id="floor-editor-section">
+      <h2>Editor de posição (arraste as salas)</h2>
+      <p id="floor-editor-note">Protótipo: arrastar só reposiciona o retângulo da sala. Corredores, paredes e portas não são recalculados — uma sala movida pode ficar visualmente desconectada dos corredores.</p>
+      <div id="floor-editor"></div>
+    </section>
 
     <section id="room-manager">
       <div id="room-list-pane">

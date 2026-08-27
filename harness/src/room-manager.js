@@ -5,6 +5,9 @@
 // for real Foundry Regions), and a detail pane with the selected room's
 // rotatable thumbnail, real exits, and an in-memory (unsaved) annotation.
 import { buildRoomThumbnailSVG } from './room-thumbnail.js';
+import { buildFloorEditorSVG, wireFloorEditorDrag } from './floor-editor.js';
+
+const FLOOR_EDITOR_GRID_SIZE = 24;
 
 const ROLE_LABEL = {
   entrance: 'Entrada',
@@ -43,6 +46,7 @@ export function setDungeon(nextDungeon) {
   renderRoomList();
   renderRegionsList();
   renderDetail();
+  renderFloorEditor();
 }
 
 function selectRoom(roomId) {
@@ -51,6 +55,19 @@ function selectRoom(roomId) {
   el('rotation').value = 0;
   renderRoomList();
   renderDetail();
+  renderFloorEditor();
+}
+
+function renderFloorEditor() {
+  const container = el('floor-editor');
+  const room = dungeon.rooms.find((r) => r.id === selectedRoomId);
+  const floor = room?.floor ?? 0;
+
+  container.innerHTML = buildFloorEditorSVG(dungeon, floor, FLOOR_EDITOR_GRID_SIZE);
+  // Dragging only changes room.x/y/cx/cy — the thumbnail (shape-relative
+  // only) and exits list (same doors/edges) don't depend on position, so
+  // there's nothing else in the UI that needs to react to onMoved yet.
+  wireFloorEditorDrag(container, dungeon, FLOOR_EDITOR_GRID_SIZE, () => {});
 }
 
 function renderRoomList() {
