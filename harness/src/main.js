@@ -1,9 +1,10 @@
 // harness/src/main.js
 import { generateDungeon, keyToMarkdown } from '@dungeon-forge/core';
 import { renderFloor } from '@dungeon-forge/render';
+import { initRoomManager, setDungeon } from './room-manager.js';
 
 const DEFAULT_CONFIG = {
-  floors: 1,
+  floors: 2,
   width: 50,
   height: 50,
   rooms: { count: 9, sizeMean: 7, sizeStdDev: 2.5, sizeMin: 3, sizeMax: 14, spawnRadius: 18, separationIters: 60 },
@@ -25,7 +26,9 @@ async function generate() {
   const { blob } = await renderFloor(dungeon, 0, 100);
   floorImage.src = URL.createObjectURL(blob);
   keyMarkdown.textContent = keyToMarkdown(dungeon.areas, dungeon.key);
+  setDungeon(dungeon);
 }
 
+initRoomManager();
 generateButton.addEventListener('click', generate);
 generate();

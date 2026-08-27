@@ -8,6 +8,41 @@
       #controls { margin-bottom: 1rem; }
       #floor-image { border: 1px solid #444; max-width: 100%; }
       #key-markdown { white-space: pre-wrap; background: #1a1a1a; padding: 1rem; max-height: 400px; overflow: auto; }
+
+      #room-manager { display: flex; gap: 1.5rem; margin-top: 2rem; border-top: 1px solid #333; padding-top: 1.5rem; }
+      #room-list-pane { flex: 0 0 220px; }
+      #room-detail-pane { flex: 1; min-width: 0; }
+      #room-manager h2 { font-size: 1rem; margin: 0 0 0.5rem; }
+      #room-manager h3 { font-size: 0.85rem; color: #999; margin: 0.75rem 0 0.25rem; }
+
+      .room-items, .region-items, .exit-items { list-style: none; padding: 0; margin: 0 0 0.5rem; }
+      .room-item {
+        display: flex; justify-content: space-between; gap: 0.5rem;
+        padding: 0.3rem 0.5rem; cursor: pointer; border-radius: 3px; font-size: 0.9rem;
+      }
+      .room-item:hover { background: #1e1e1e; }
+      .room-item.active { background: #24352a; }
+      .room-role { font-size: 0.72rem; color: #999; }
+
+      .region-items li { font-size: 0.85rem; padding: 0.2rem 0; color: #ccc; }
+      .region-floors { color: #888; font-size: 0.78rem; }
+
+      .room-thumb { width: 220px; height: 220px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; display: block; }
+      .room-rect { fill: #333; stroke: #999; stroke-width: 2; }
+      .door-tick { fill: #c8963e; }
+      .door-tick-secret { fill: #7a5c9e; stroke: #c8963e; stroke-width: 1; stroke-dasharray: 2 1; }
+      .compass-ring { fill: none; stroke: #666; stroke-width: 1; }
+      .compass-arm { stroke: #888; stroke-width: 1; }
+      .compass-arm-n { stroke: #c0392b; stroke-width: 1.5; }
+      .compass-label { font-size: 8px; fill: #aaa; }
+
+      #rotation { width: 220px; margin: 0.5rem 0; display: block; }
+      .exit-items li { font-size: 0.85rem; padding: 0.15rem 0; color: #ccc; }
+      #room-annotation {
+        width: 220px; min-height: 80px; margin-top: 0.5rem;
+        background: #1a1a1a; color: #eee; border: 1px solid #444; font-family: inherit; padding: 0.4rem;
+      }
+      .empty { color: #777; font-style: italic; font-size: 0.85rem; }
     </style>
   </head>
   <body>
@@ -19,6 +54,25 @@
     <img id="floor-image" alt="andar gerado" />
     <h2>Chave (markdown)</h2>
     <pre id="key-markdown"></pre>
+
+    <section id="room-manager">
+      <div id="room-list-pane">
+        <h2>Salas</h2>
+        <div id="room-list"></div>
+        <h2>Regions (prévia — escadas)</h2>
+        <div id="regions-list"></div>
+      </div>
+      <div id="room-detail-pane">
+        <h2>Sala selecionada</h2>
+        <div id="room-thumbnail"></div>
+        <label style="font-size: 0.8rem; color: #999;">Rotação
+          <input id="rotation" type="range" min="0" max="359" value="0" />
+        </label>
+        <div id="room-exits"></div>
+        <textarea id="room-annotation" placeholder="Anotações do mestre (não salvas)..."></textarea>
+      </div>
+    </section>
+
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>
