@@ -48,12 +48,36 @@ describe('extractWalls', () => {
     const grid = createGrid(width, height, 1);
     const r0 = room(0, 2, 2, 3, 3);
     stamp(grid, width, height, r0.x, r0.y, r0.w, r0.h, CELL.ROOM);
-    // Hallway poking out of the room's east wall.
+    // Hallway poking out of the room's east wall, dead-ending into nothing.
     stamp(grid, width, height, r0.x + r0.w, r0.y + 1, 3, 1, CELL.HALLWAY);
 
     const { walls, doors } = extractWalls(grid, width, height, 0, [r0]);
     expect(doors.length).toBeGreaterThan(0);
     expect(walls.some((w) => w.isDoor)).toBe(true);
+    // Nothing else to reach — must resolve to null, not throw.
+    expect(doors.every((d) => d.toRoomId === null)).toBe(true);
+    expect(doors.every((d) => d.dir === 'e')).toBe(true);
+  });
+
+  it('traces each door to the room its corridor actually reaches', () => {
+    const width = 14;
+    const height = 8;
+    const grid = createGrid(width, height, 1);
+    const r0 = room(0, 2, 2, 3, 3); // x:2-4, y:2-4, east wall at x=5
+    const r1 = room(1, 8, 2, 3, 3); // x:8-10, y:2-4, west wall at x=8
+    stamp(grid, width, height, r0.x, r0.y, r0.w, r0.h, CELL.ROOM);
+    stamp(grid, width, height, r1.x, r1.y, r1.w, r1.h, CELL.ROOM);
+    // Corridor at y=3 joining room 0's east side to room 1's west side.
+    stamp(grid, width, height, 5, 3, 3, 1, CELL.HALLWAY);
+
+    const { doors } = extractWalls(grid, width, height, 0, [r0, r1]);
+    const doorFrom0 = doors.find((d) => d.roomId === 0);
+    const doorFrom1 = doors.find((d) => d.roomId === 1);
+
+    expect(doorFrom0.dir).toBe('e');
+    expect(doorFrom0.toRoomId).toBe(1);
+    expect(doorFrom1.dir).toBe('w');
+    expect(doorFrom1.toRoomId).toBe(0);
   });
 
   it('every WallSegment borders at least one walkable cell', () => {

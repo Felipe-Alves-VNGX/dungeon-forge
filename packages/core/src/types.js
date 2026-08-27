@@ -95,6 +95,10 @@
  * @property {number} y2
  * @property {number} roomId
  * @property {boolean} secret
+ * @property {'n'|'s'|'e'|'w'} dir     // which side of its own Room the door sits on
+ * @property {number|null} toRoomId   // the Room this door's corridor actually reaches,
+ *                                    // traced through the grid — not in SPEC.md's minimal
+ *                                    // typedef, same pattern as VerticalLink.roomIdFrom/To
  */
 
 /**

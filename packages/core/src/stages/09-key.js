@@ -92,21 +92,56 @@ function bfsOrder(rooms, adjacency, links, entranceRoomId) {
   return order;
 }
 
-function exitsFor(roomId, adjacency, links, labelByRoomId) {
+// Reads exits straight off the room's own physical doors (dir/toRoomId,
+// traced through the grid in extractWalls) rather than the abstract
+// room-adjacency graph — dir is real geometry now, not a hardcoded n/s
+// guess, and via:'secret' is that specific door's own flag.
+function exitsFor(room, doorsById, links, labelByRoomId) {
   const exits = [];
-  for (const { a, b } of adjacency) {
-    if (a === roomId) exits.push({ dir: 'n', toLabel: labelByRoomId.get(b), via: 'door' });
-    if (b === roomId) exits.push({ dir: 's', toLabel: labelByRoomId.get(a), via: 'door' });
+  for (const doorId of room.doors) {
+    const door = doorsById.get(doorId);
+    if (!door || door.toRoomId == null) continue;
+    const toLabel = labelByRoomId.get(door.toRoomId);
+    if (toLabel === undefined) continue;
+    exits.push({ dir: door.dir, toLabel, via: door.secret ? 'secret' : 'door' });
   }
   for (const link of links) {
-    if (link.roomIdFrom === roomId) {
+    if (link.roomIdFrom === room.id) {
       exits.push({ dir: 'down', toLabel: labelByRoomId.get(link.roomIdTo), via: 'stair' });
     }
-    if (link.roomIdTo === roomId) {
+    if (link.roomIdTo === room.id) {
       exits.push({ dir: 'up', toLabel: labelByRoomId.get(link.roomIdFrom), via: 'stair' });
     }
   }
   return exits;
+}
+
+const OPPOSITE_DIR = { n: 's', s: 'n', e: 'w', w: 'e', up: 'down', down: 'up' };
+
+// Door-based exits are traced independently per door (nearest room reached
+// by BFS from that specific opening) — accurate, but not guaranteed
+// symmetric where 3+ rooms share overlapping corridor space near a
+// junction: a spur room's door can correctly find a neighbor as "nearest",
+// while that neighbor's own doors both find a *different*, closer room as
+// nearest and never point back. SPEC.md §6 invariant 11 requires symmetry
+// regardless, so fill in the missing side with the geometric opposite
+// direction — the best available guess, and the common case (a real
+// mutual door pair) never hits this since `hasReciprocal` is already true.
+// Stair exits are skipped: exitsFor already emits both ends of every
+// VerticalLink from the link itself, so they're symmetric by construction.
+function synchronizeExits(areas) {
+  const areasByLabel = new Map(areas.map((a) => [a.label, a]));
+  for (const area of areas) {
+    for (const exit of [...area.exits]) {
+      if (exit.via === 'stair') continue;
+      const target = areasByLabel.get(exit.toLabel);
+      if (!target || target === area) continue;
+      const hasReciprocal = target.exits.some((e) => e.toLabel === area.label);
+      if (!hasReciprocal) {
+        target.exits.push({ dir: OPPOSITE_DIR[exit.dir] ?? exit.dir, toLabel: area.label, via: exit.via });
+      }
+    }
+  }
 }
 
 function descriptionFor(role, exits, exitsInEntries, hasSecretDoor) {
@@ -159,6 +194,7 @@ export function buildKey(rooms, adjacency, entranceRoomId, keyConfig, links = []
     labelByRoomId.set(id, formatLabel(keyConfig.scheme, r.floor, keyConfig.startAt - 1 + countOnFloor, keyConfig.padTo));
   }
 
+  const doorsById = new Map(doors.map((d) => [d.id, d]));
   const areas = numberedIds.map((id) => {
     const r = roomsById.get(id);
     return {
@@ -168,11 +204,12 @@ export function buildKey(rooms, adjacency, entranceRoomId, keyConfig, links = []
       roomId: id,
       cx: r.cx,
       cy: r.cy,
-      exits: exitsFor(id, adjacency, links, labelByRoomId),
+      exits: exitsFor(r, doorsById, links, labelByRoomId),
     };
   });
 
-  const doorsById = new Map(doors.map((d) => [d.id, d]));
+  synchronizeExits(areas);
+
   const entries = areas.map((area) => {
     const room = roomsById.get(area.roomId);
     const title = TITLE_BY_ROLE[room.role] ?? `Área ${area.label}`;

@@ -136,6 +136,26 @@ describe('buildKey', () => {
     expect(areaFor(2).exits).toContainEqual({ dir: 'up', toLabel: areaFor(1).label, via: 'stair' });
   });
 
+  it('reads room-room exits from real doors — dir and via come from the door, not adjacency', () => {
+    const room0 = room(0, 0, 0, 0, 'entrance');
+    const room1 = room(1, 0, 1, 0, 'filler');
+    room0.doors = [10];
+    room1.doors = [10, 11];
+    const rooms = [room0, room1];
+    // adjacency is intentionally empty — this exit must come from `doors`, not from it.
+    const adjacency = [];
+    const doors = [
+      { id: 10, floor: 0, x1: 0, y1: 1, x2: 1, y2: 1, roomId: 0, secret: false, dir: 's', toRoomId: 1 },
+      { id: 11, floor: 0, x1: 2, y1: 0, x2: 2, y2: 1, roomId: 1, secret: true, dir: 'e', toRoomId: 0 },
+    ];
+
+    const { areas } = buildKey(rooms, adjacency, 0, DEFAULT_KEY_CONFIG, [], doors);
+    const areaFor = (id) => areas.find((a) => a.roomId === id);
+
+    expect(areaFor(0).exits).toContainEqual({ dir: 's', toLabel: areaFor(1).label, via: 'door' });
+    expect(areaFor(1).exits).toContainEqual({ dir: 'e', toLabel: areaFor(0).label, via: 'secret' });
+  });
+
   it('legend includes secret iff a door is secret, and mentions it in the treasure room description', () => {
     const treasureRoomObj = room(1, 0, 1, 0, 'treasure');
     treasureRoomObj.doors = [100, 101];
