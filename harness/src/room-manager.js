@@ -6,8 +6,10 @@
 // rotatable thumbnail, real exits, and an in-memory (unsaved) annotation.
 import { buildRoomThumbnailSVG } from './room-thumbnail.js';
 import { buildFloorEditorSVG, wireFloorEditorDrag } from './floor-editor.js';
+import { rectToCellSet, cellSetToBoundingRect, buildCellGridSVG, wireCellGridToggle } from './cell-editor.js';
 
 const FLOOR_EDITOR_GRID_SIZE = 24;
+const CELL_EDITOR_GRID_SIZE = 24;
 
 const ROLE_LABEL = {
   entrance: 'Entrada',
@@ -23,6 +25,7 @@ let dungeon = null;
 let selectedRoomId = null;
 let rotationDeg = 0;
 const annotations = new Map(); // roomId -> string, in-memory only, resets on reload
+const cellSelections = new Map(); // roomId -> Set<"x,y">, in-memory only, resets on reload
 
 function el(id) {
   return document.getElementById(id);
@@ -36,6 +39,7 @@ export function initRoomManager() {
   el('room-annotation').addEventListener('input', (event) => {
     if (selectedRoomId != null) annotations.set(selectedRoomId, event.target.value);
   });
+  el('cell-editor-reset').addEventListener('click', resetCellSelection);
 }
 
 export function setDungeon(nextDungeon) {
@@ -47,6 +51,7 @@ export function setDungeon(nextDungeon) {
   renderRegionsList();
   renderDetail();
   renderFloorEditor();
+  renderCellEditor();
 }
 
 function selectRoom(roomId) {
@@ -56,6 +61,7 @@ function selectRoom(roomId) {
   renderRoomList();
   renderDetail();
   renderFloorEditor();
+  renderCellEditor();
 }
 
 function renderFloorEditor() {
@@ -68,6 +74,49 @@ function renderFloorEditor() {
   // only) and exits list (same doors/edges) don't depend on position, so
   // there's nothing else in the UI that needs to react to onMoved yet.
   wireFloorEditorDrag(container, dungeon, FLOOR_EDITOR_GRID_SIZE, () => {});
+}
+
+function getCellSelection(room) {
+  if (!cellSelections.has(room.id)) {
+    cellSelections.set(room.id, rectToCellSet(room));
+  }
+  return cellSelections.get(room.id);
+}
+
+function renderCellEditor() {
+  const container = el('cell-editor');
+  const room = dungeon.rooms.find((r) => r.id === selectedRoomId);
+  if (!room) {
+    container.innerHTML = '';
+    return;
+  }
+  const cellSet = getCellSelection(room);
+  container.innerHTML = buildCellGridSVG(room, cellSet, dungeon, CELL_EDITOR_GRID_SIZE);
+  wireCellGridToggle(container, cellSet, () => applyCellSelection(room, cellSet));
+}
+
+// Toggling cells never touches room.x/y/w/h directly — only the toggled
+// set's bounding rectangle does, since that's the only shape the core model
+// understands today. See cell-editor.js.
+function applyCellSelection(room, cellSet) {
+  const rect = cellSetToBoundingRect(cellSet);
+  if (!rect) return;
+  room.x = rect.x;
+  room.y = rect.y;
+  room.w = rect.w;
+  room.h = rect.h;
+  room.cx = room.x + room.w / 2;
+  room.cy = room.y + room.h / 2;
+  renderCellEditor();
+  renderDetail();
+  renderFloorEditor();
+}
+
+function resetCellSelection() {
+  const room = dungeon.rooms.find((r) => r.id === selectedRoomId);
+  if (!room) return;
+  cellSelections.set(room.id, rectToCellSet(room));
+  renderCellEditor();
 }
 
 function renderRoomList() {
