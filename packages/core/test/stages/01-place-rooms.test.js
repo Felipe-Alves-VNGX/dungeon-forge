@@ -83,7 +83,13 @@ describe('placeRooms — shape selection', () => {
   });
 
   it('only ever picks shape types present in params.shapes with weight > 0', () => {
-    const params = { ...PARAMS, shapes: [{ type: 'rect', weight: 0 }, { type: 'circle', weight: 1 }] };
+    // sizeMin: 4 — rooms with a side <4 auto-fallback to 'rect' in placeRooms
+    // (see FIX 1), so this must stay >=4 for the assertion below to hold.
+    const params = {
+      ...PARAMS,
+      sizeMin: 4,
+      shapes: [{ type: 'rect', weight: 0 }, { type: 'circle', weight: 1 }],
+    };
     const { rooms } = placeRooms(params, 0, deriveRng('seed-shape-2', 'place-rooms'));
     for (const r of rooms) {
       expect(r.shape.type).toBe('circle');

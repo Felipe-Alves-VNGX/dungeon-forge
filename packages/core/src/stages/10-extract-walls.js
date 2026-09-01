@@ -1,5 +1,5 @@
 // packages/core/src/stages/10-extract-walls.js
-import { CELL, getCell, getRoomId, inBounds } from '../grid.js';
+import { CELL, getCell, getRoomId, inBounds, NO_ROOM } from '../grid.js';
 
 function isWalkable(value) {
   return value === CELL.ROOM || value === CELL.HALLWAY || value === CELL.STAIR;
@@ -56,7 +56,8 @@ const DOOR_NEIGHBORS = [
 
 function roomIdAtCell(roomIdAt, x, y, floor, width, height) {
   if (!inBounds(x, y, floor, width, height, floor + 1)) return null;
-  return getRoomId(roomIdAt, x, y, floor, width, height);
+  const id = getRoomId(roomIdAt, x, y, floor, width, height);
+  return id === NO_ROOM ? null : id;
 }
 
 /**

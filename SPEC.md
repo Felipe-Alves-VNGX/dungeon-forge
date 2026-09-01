@@ -163,6 +163,12 @@ Todo estágio recebe e devolve objetos planos serializáveis. Definidos em `core
  */
 
 /**
+ * @typedef {Object} RoomShapeEntry
+ * @property {'rect'|'l'|'cross'|'circle'|'triangle'} type
+ * @property {number} weight            // peso relativo, não precisa somar 1
+ */
+
+/**
  * @typedef {Object} RoomParams
  * @property {number} count             // salas-alvo por andar
  * @property {number} sizeMean          // média da normal, em células
@@ -171,6 +177,7 @@ Todo estágio recebe e devolve objetos planos serializáveis. Definidos em `core
  * @property {number} sizeMax
  * @property {number} spawnRadius       // raio da elipse de spawn
  * @property {number} separationIters
+ * @property {RoomShapeEntry[]} [shapes]  // default: [{type:'rect', weight:1}]. Entradas não-'rect' só se aplicam a salas com w e h >=4 — salas menores sempre caem no fallback 'rect' (ver 01-place-rooms.js).
  */
 
 /**
@@ -190,6 +197,7 @@ Todo estágio recebe e devolve objetos planos serializáveis. Definidos em `core
  * @property {number} cx @property {number} cy // centroide, float
  * @property {RoomRole} role
  * @property {number[]} doors           // índices em Dungeon.doors
+ * @property {{type: string, params: Object}} [shape]   // qual shape gerou as células desta sala; opcional — ausente significa 'rect'
  */
 
 /** @typedef {'entrance'|'climax'|'treasure'|'junction'|'filler'} RoomRole */
@@ -272,6 +280,7 @@ Todo estágio recebe e devolve objetos planos serializáveis. Definidos em `core
  * @property {string} seed
  * @property {number} width @property {number} height @property {number} floors
  * @property {Uint8Array} cells         // ver §5.2
+ * @property {Uint16Array} roomIdAt     // paralelo a cells; NO_ROOM (grid.js) onde nenhuma sala é dona da célula
  * @property {Room[]} rooms
  * @property {Edge[]} edges
  * @property {VerticalLink[]} links

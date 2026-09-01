@@ -69,7 +69,11 @@ export function placeRooms(params, floor, rng) {
   const shapeTable = params.shapes ?? [{ type: 'rect', weight: 1 }];
 
   const rooms = promoted.map((b, i) => {
-    const type = rng.weightedPick(shapeTable, (e) => e.weight).type;
+    const rawType = rng.weightedPick(shapeTable, (e) => e.weight).type;
+    // L/cross rasterizers degenerate to a plain rectangle below a 4-cell
+    // side (notch = floor((dim-1)/3) is 0 at dim=3) — fall back to 'rect'
+    // so Room.shape.type never claims a shape the cells don't actually have.
+    const type = (rawType !== 'rect' && (b.w < 4 || b.h < 4)) ? 'rect' : rawType;
     return {
       id: i,
       floor,

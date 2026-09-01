@@ -41,7 +41,7 @@
  * @property {number} sizeMax
  * @property {number} spawnRadius
  * @property {number} separationIters
- * @property {RoomShapeEntry[]} [shapes]  // default: [{type:'rect', weight:1}]
+ * @property {RoomShapeEntry[]} [shapes]  // default: [{type:'rect', weight:1}]. Non-'rect' entries only apply to rooms whose w and h are both >=4 — smaller rooms always fall back to 'rect' (see 01-place-rooms.js).
  */
 
 /**
@@ -64,7 +64,7 @@
  * @property {number} cy
  * @property {RoomRole} role
  * @property {number[]} doors
- * @property {{type: string, params: Object}} shape   // which shape generated this room's cells
+ * @property {{type: string, params: Object}} [shape]   // which shape generated this room's cells; optional — absent means 'rect'
  */
 
 /** @typedef {'entrance'|'climax'|'treasure'|'junction'|'filler'} RoomRole */

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CELL, createGrid, setCell, createRoomIdGrid, setRoomId } from '../../src/grid.js';
+import { CELL, createGrid, setCell, createRoomIdGrid, setRoomId, NO_ROOM } from '../../src/grid.js';
 import { extractWalls } from '../../src/stages/10-extract-walls.js';
 
 function room(id, x, y, w, h) {
@@ -148,5 +148,27 @@ describe('extractWalls', () => {
 
     const { doors } = extractWalls(grid, roomIdAt, width, height, 0, [r0]);
     expect(doors.some((d) => d.roomId === 0)).toBe(true);
+  });
+
+  it('never leaks NO_ROOM (65535) as a toRoomId when a CELL.ROOM cell has no roomIdAt entry', () => {
+    const width = 14;
+    const height = 8;
+    const grid = createGrid(width, height, 1);
+    const roomIdAt = createRoomIdGrid(width, height, 1);
+    const r0 = room(0, 2, 2, 3, 3); // x:2-4, y:2-4, east wall at x=5
+    stamp(grid, width, height, r0.x, r0.y, r0.w, r0.h, CELL.ROOM);
+    stampRoomId(roomIdAt, width, height, r0.id, r0.x, r0.y, r0.w, r0.h);
+    // Corridor from room 0's east wall leading to an orphan CELL.ROOM cell
+    // that was stamped in the grid but never given a roomIdAt entry —
+    // simulating the scenario the guard in roomIdAtCell protects against.
+    // getRoomId would return NO_ROOM (0xffff) for this cell.
+    stamp(grid, width, height, 5, 3, 3, 1, CELL.HALLWAY);
+    setCell(grid, 8, 3, 0, width, height, CELL.ROOM);
+
+    const { doors } = extractWalls(grid, roomIdAt, width, height, 0, [r0]);
+    const doorFrom0 = doors.find((d) => d.roomId === 0);
+    expect(doorFrom0).toBeDefined();
+    expect(doors.every((d) => d.toRoomId !== NO_ROOM)).toBe(true);
+    expect(doorFrom0.toRoomId).toBe(null);
   });
 });

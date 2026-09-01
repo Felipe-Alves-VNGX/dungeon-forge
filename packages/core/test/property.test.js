@@ -48,7 +48,7 @@ const CONFIGS = [
     floors: 3, width: 55, height: 55,
     rooms: {
       ...ROOM_PARAMS,
-      sizeMin: 4, // shape rasterizers need >=4 on a side to produce a non-degenerate notch/arm
+      sizeMin: 4, // rooms with a side <4 auto-fallback to 'rect' in placeRooms; keep sizeMin>=4 here so this config actually exercises l/cross variety
       shapes: [
         { type: 'rect', weight: 1 },
         { type: 'l', weight: 1 },
