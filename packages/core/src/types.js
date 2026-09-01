@@ -27,6 +27,12 @@
  */
 
 /**
+ * @typedef {Object} RoomShapeEntry
+ * @property {'rect'|'l'|'cross'|'circle'|'triangle'} type
+ * @property {number} weight            // relative weight, need not sum to 1
+ */
+
+/**
  * @typedef {Object} RoomParams
  * @property {number} count
  * @property {number} sizeMean
@@ -35,6 +41,7 @@
  * @property {number} sizeMax
  * @property {number} spawnRadius
  * @property {number} separationIters
+ * @property {RoomShapeEntry[]} [shapes]  // default: [{type:'rect', weight:1}]
  */
 
 /**
@@ -57,6 +64,7 @@
  * @property {number} cy
  * @property {RoomRole} role
  * @property {number[]} doors
+ * @property {{type: string, params: Object}} shape   // which shape generated this room's cells
  */
 
 /** @typedef {'entrance'|'climax'|'treasure'|'junction'|'filler'} RoomRole */

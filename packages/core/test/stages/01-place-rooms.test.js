@@ -73,3 +73,30 @@ describe('placeRooms', () => {
     expect(residualCells.length).toBeGreaterThan(0);
   });
 });
+
+describe('placeRooms — shape selection', () => {
+  it('defaults every room to shape.type "rect" when params.shapes is absent', () => {
+    const { rooms } = placeRooms(PARAMS, 0, deriveRng('seed-shape-1', 'place-rooms'));
+    for (const r of rooms) {
+      expect(r.shape).toEqual({ type: 'rect', params: {} });
+    }
+  });
+
+  it('only ever picks shape types present in params.shapes with weight > 0', () => {
+    const params = { ...PARAMS, shapes: [{ type: 'rect', weight: 0 }, { type: 'circle', weight: 1 }] };
+    const { rooms } = placeRooms(params, 0, deriveRng('seed-shape-2', 'place-rooms'));
+    for (const r of rooms) {
+      expect(r.shape.type).toBe('circle');
+    }
+  });
+
+  it('is deterministic for the same seed, including shape assignment', () => {
+    const params = {
+      ...PARAMS,
+      shapes: [{ type: 'rect', weight: 1 }, { type: 'l', weight: 1 }, { type: 'triangle', weight: 1 }],
+    };
+    const a = placeRooms(params, 0, deriveRng('seed-shape-3', 'place-rooms'));
+    const b = placeRooms(params, 0, deriveRng('seed-shape-3', 'place-rooms'));
+    expect(a.rooms.map((r) => r.shape)).toEqual(b.rooms.map((r) => r.shape));
+  });
+});
