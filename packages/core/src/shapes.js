@@ -17,6 +17,37 @@ export function rasterizeRect(room) {
   return cells;
 }
 
+export function rasterizeL(room, params) {
+  const notchW = Math.floor((room.w - 1) / 3);
+  const notchH = Math.floor((room.h - 1) / 3);
+  const notchXStart = params.corner === 'ne' || params.corner === 'se' ? room.w - notchW : 0;
+  const notchYStart = params.corner === 'sw' || params.corner === 'se' ? room.h - notchH : 0;
+
+  const cells = [];
+  for (let dy = 0; dy < room.h; dy++) {
+    for (let dx = 0; dx < room.w; dx++) {
+      const inNotch =
+        dx >= notchXStart && dx < notchXStart + notchW &&
+        dy >= notchYStart && dy < notchYStart + notchH;
+      if (!inNotch) cells.push({ x: room.x + dx, y: room.y + dy });
+    }
+  }
+  return cells;
+}
+
+/**
+ * @param {'rect'|'l'|'cross'|'circle'|'triangle'} type
+ * @param {import('./rng.js').Rng} rng
+ */
+export function sampleShapeParams(type, rng) {
+  switch (type) {
+    case 'l':
+      return { corner: rng.pick(['nw', 'ne', 'sw', 'se']) };
+    default:
+      return {};
+  }
+}
+
 /**
  * @param {import('./types.js').Room} room
  * @returns {Array<{x:number,y:number}>}
@@ -26,6 +57,8 @@ export function rasterizeRoom(room) {
   switch (type) {
     case 'rect':
       return rasterizeRect(room);
+    case 'l':
+      return rasterizeL(room, room.shape.params);
     default:
       throw new Error(`rasterizeRoom: unknown shape type "${type}"`);
   }

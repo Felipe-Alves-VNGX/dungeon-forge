@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { rasterizeRect, rasterizeRoom } from '../src/shapes.js';
+import { deriveRng } from '../src/rng.js';
+import { rasterizeL, rasterizeRect, rasterizeRoom, sampleShapeParams } from '../src/shapes.js';
 
 function room(x, y, w, h, shape) {
   return { id: 0, floor: 0, x, y, w, h, cx: x + w / 2, cy: y + h / 2, role: 'filler', doors: [], shape };
@@ -41,5 +42,48 @@ describe('rasterizeRoom dispatcher', () => {
   it('throws on an unknown shape type', () => {
     const r = room(1, 1, 3, 3, { type: 'nonsense', params: {} });
     expect(() => rasterizeRoom(r)).toThrow(/unknown shape type/);
+  });
+});
+
+describe('rasterizeL', () => {
+  const corners = ['nw', 'ne', 'sw', 'se'];
+
+  it('contains the rounded centroid for every corner and a range of sizes', () => {
+    for (const corner of corners) {
+      for (const [w, h] of [[3, 3], [4, 5], [6, 6], [10, 7]]) {
+        const r = room(0, 0, w, h);
+        const cells = rasterizeL(r, { corner });
+        const target = `${Math.round(r.cx)},${Math.round(r.cy)}`;
+        expect(cells.map((c) => `${c.x},${c.y}`)).toContain(target);
+      }
+    }
+  });
+
+  it('is strictly fewer cells than the full bounding box for large-enough rooms', () => {
+    const r = room(0, 0, 8, 8);
+    const cells = rasterizeL(r, { corner: 'ne' });
+    expect(cells.length).toBeLessThan(r.w * r.h);
+  });
+
+  it('every returned cell is within the bounding box', () => {
+    const r = room(5, 5, 7, 6);
+    const cells = rasterizeL(r, { corner: 'sw' });
+    for (const c of cells) {
+      expect(c.x).toBeGreaterThanOrEqual(r.x);
+      expect(c.x).toBeLessThan(r.x + r.w);
+      expect(c.y).toBeGreaterThanOrEqual(r.y);
+      expect(c.y).toBeLessThan(r.y + r.h);
+    }
+  });
+});
+
+describe('sampleShapeParams("l", rng)', () => {
+  it('returns one of the four corners, deterministically for a given seed', () => {
+    const rngA = deriveRng('seed-l', 'shape-params');
+    const rngB = deriveRng('seed-l', 'shape-params');
+    const a = sampleShapeParams('l', rngA);
+    const b = sampleShapeParams('l', rngB);
+    expect(['nw', 'ne', 'sw', 'se']).toContain(a.corner);
+    expect(a).toEqual(b);
   });
 });
