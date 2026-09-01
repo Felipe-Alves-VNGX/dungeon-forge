@@ -104,3 +104,39 @@ describe('deriveRng', () => {
     expect(b2.float()).toEqual(bFirst);
   });
 });
+
+describe('Rng.weightedPick', () => {
+  it('always returns an entry with zero weight everywhere else', () => {
+    const rng = deriveRng('seed-1', 'weighted-pick');
+    const entries = [{ id: 'a', weight: 0 }, { id: 'b', weight: 1 }, { id: 'c', weight: 0 }];
+    for (let i = 0; i < 20; i++) {
+      expect(rng.weightedPick(entries, (e) => e.weight).id).toBe('b');
+    }
+  });
+
+  it('is deterministic for the same seed', () => {
+    const entries = [{ id: 'a', weight: 1 }, { id: 'b', weight: 2 }, { id: 'c', weight: 3 }];
+    const rngA = deriveRng('seed-2', 'weighted-pick');
+    const rngB = deriveRng('seed-2', 'weighted-pick');
+    const picksA = Array.from({ length: 30 }, () => rngA.weightedPick(entries, (e) => e.weight).id);
+    const picksB = Array.from({ length: 30 }, () => rngB.weightedPick(entries, (e) => e.weight).id);
+    expect(picksA).toEqual(picksB);
+  });
+
+  it('over many draws, picks each entry roughly proportional to its weight', () => {
+    const rng = deriveRng('seed-3', 'weighted-pick');
+    const entries = [{ id: 'a', weight: 1 }, { id: 'b', weight: 3 }];
+    const counts = { a: 0, b: 0 };
+    const n = 4000;
+    for (let i = 0; i < n; i++) counts[rng.weightedPick(entries, (e) => e.weight).id]++;
+    // Expect ~25%/75% split; generous tolerance since this is a statistical check.
+    expect(counts.a / n).toBeGreaterThan(0.15);
+    expect(counts.a / n).toBeLessThan(0.35);
+  });
+
+  it('single-entry table always returns that entry', () => {
+    const rng = deriveRng('seed-4', 'weighted-pick');
+    const entries = [{ id: 'only', weight: 1 }];
+    expect(rng.weightedPick(entries, (e) => e.weight).id).toBe('only');
+  });
+});

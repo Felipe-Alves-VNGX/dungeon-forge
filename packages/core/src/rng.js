@@ -60,6 +60,15 @@ function buildRng(floatFn) {
       }
       return arr;
     },
+    weightedPick(entries, weightFn) {
+      const total = entries.reduce((sum, e) => sum + weightFn(e), 0);
+      let roll = floatFn() * total;
+      for (const entry of entries) {
+        roll -= weightFn(entry);
+        if (roll < 0) return entry;
+      }
+      return entries[entries.length - 1];
+    },
     chance(p) {
       return floatFn() < p;
     },
