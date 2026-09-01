@@ -57,6 +57,16 @@
       .edit-room-rect { fill: #2a3a2a; stroke: #6a8a6a; stroke-width: 1.5; }
       .editable-room.dragging .edit-room-rect { fill: #3a4a3a; stroke: #9fd; }
       .edit-room-label { font-size: 11px; fill: #cde; pointer-events: none; user-select: none; }
+
+      #cell-editor-note { font-size: 0.78rem; color: #a08050; margin: 0.5rem 0; max-width: 32rem; }
+      #cell-editor { max-width: 100%; overflow: auto; border: 1px solid #444; background: #161616; margin-bottom: 0.5rem; }
+      .cell-editor-svg { display: block; max-width: 100%; height: auto; }
+      .grid-cell { fill: #1e1e1e; stroke: #333; stroke-width: 1; cursor: pointer; }
+      .grid-cell:hover { fill: #2a2a2a; }
+      .grid-cell-on { fill: #2a3a2a; }
+      .grid-cell-on:hover { fill: #35483a; }
+      .grid-applied-rect { fill: none; stroke: #c8963e; stroke-width: 2; stroke-dasharray: 4 2; pointer-events: none; }
+      #cell-editor-reset { margin-bottom: 1rem; }
     </style>
   </head>
   <body>
@@ -90,6 +100,11 @@
         </label>
         <div id="room-exits"></div>
         <textarea id="room-annotation" placeholder="Anotações do mestre (não salvas)..."></textarea>
+
+        <h2>Editor de células (protótipo)</h2>
+        <p id="cell-editor-note">Protótipo: clique nas células para esboçar uma forma futura. O core só entende salas retangulares hoje, então apenas o retângulo delimitador (contorno tracejado) das células marcadas é aplicado à sala.</p>
+        <div id="cell-editor"></div>
+        <button id="cell-editor-reset" type="button">Resetar seleção</button>
       </div>
     </section>
 
