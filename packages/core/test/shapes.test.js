@@ -181,6 +181,33 @@ describe('rasterizeTriangle', () => {
     }
   });
 
+  it('centroid cell always has at least one orthogonal neighbor within the triangle', () => {
+    for (const orientation of orientations) {
+      for (const [w, h] of [[4, 4], [5, 7], [8, 3], [9, 9]]) {
+        const r = room(0, 0, w, h);
+        const cells = rasterizeTriangle(r, { orientation });
+        const centroidX = Math.round(r.cx);
+        const centroidY = Math.round(r.cy);
+
+        // Build a set of all cell coordinates for fast lookup
+        const cellSet = new Set(cells.map((c) => `${c.x},${c.y}`));
+
+        // The centroid cell must be present
+        const centroidKey = `${centroidX},${centroidY}`;
+        expect(cellSet.has(centroidKey)).toBe(true);
+
+        // The centroid must have at least one orthogonal neighbor (up/down/left/right)
+        const hasOrthogonalNeighbor =
+          cellSet.has(`${centroidX - 1},${centroidY}`) ||  // left
+          cellSet.has(`${centroidX + 1},${centroidY}`) ||  // right
+          cellSet.has(`${centroidX},${centroidY - 1}`) ||  // up
+          cellSet.has(`${centroidX},${centroidY + 1}`);    // down
+
+        expect(hasOrthogonalNeighbor).toBe(true);
+      }
+    }
+  });
+
   it('throws on an unknown orientation', () => {
     const r = room(0, 0, 5, 5);
     expect(() => rasterizeTriangle(r, { orientation: 'sideways' })).toThrow(/unknown orientation/);

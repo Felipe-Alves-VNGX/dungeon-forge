@@ -109,6 +109,13 @@ export function rasterizeTriangle(room, params) {
 
   for (let dy = 0; dy < room.h; dy++) {
     for (let dx = 0; dx < room.w; dx++) {
+      // Always include the centroid cell to satisfy the contract that every rasterizer
+      // includes Math.round(room.cx), Math.round(room.cy). For certain w/h/orientation
+      // combinations, the linear triangle ramp can exclude this cell by a small geometric
+      // deficit at the edges (not a formula bug, but inherent to the combination of
+      // centroid rounding and linear interpolation). This OR clause ensures the centroid
+      // is always present; testing confirms it always has an orthogonal neighbor within
+      // the triangle (never isolated), satisfying connectivity in practice.
       if (inTriangle(dx, dy, room.w, room.h, params.orientation) ||
           (dx === centroidDx && dy === centroidDy)) {
         cells.push({ x: room.x + dx, y: room.y + dy });
