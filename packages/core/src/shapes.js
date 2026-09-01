@@ -69,6 +69,55 @@ export function rasterizeCircle(room) {
   return cells;
 }
 
+function inTriangle(dx, dy, w, h, orientation) {
+  switch (orientation) {
+    case 'up': {
+      const rowFrac = (dy + 1) / h;
+      const halfWidth = (rowFrac * w) / 2;
+      const center = w / 2;
+      return dx + 0.5 >= center - halfWidth && dx + 0.5 <= center + halfWidth;
+    }
+    case 'down': {
+      const rowFrac = (h - dy) / h;
+      const halfWidth = (rowFrac * w) / 2;
+      const center = w / 2;
+      return dx + 0.5 >= center - halfWidth && dx + 0.5 <= center + halfWidth;
+    }
+    case 'left': {
+      const colFrac = (dx + 1) / w;
+      const halfHeight = (colFrac * h) / 2;
+      const center = h / 2;
+      return dy + 0.5 >= center - halfHeight && dy + 0.5 <= center + halfHeight;
+    }
+    case 'right': {
+      const colFrac = (w - dx) / w;
+      const halfHeight = (colFrac * h) / 2;
+      const center = h / 2;
+      return dy + 0.5 >= center - halfHeight && dy + 0.5 <= center + halfHeight;
+    }
+    default:
+      throw new Error(`rasterizeTriangle: unknown orientation "${orientation}"`);
+  }
+}
+
+export function rasterizeTriangle(room, params) {
+  const cells = [];
+  const centroidX = Math.round(room.cx);
+  const centroidY = Math.round(room.cy);
+  const centroidDx = centroidX - room.x;
+  const centroidDy = centroidY - room.y;
+
+  for (let dy = 0; dy < room.h; dy++) {
+    for (let dx = 0; dx < room.w; dx++) {
+      if (inTriangle(dx, dy, room.w, room.h, params.orientation) ||
+          (dx === centroidDx && dy === centroidDy)) {
+        cells.push({ x: room.x + dx, y: room.y + dy });
+      }
+    }
+  }
+  return cells;
+}
+
 /**
  * @param {'rect'|'l'|'cross'|'circle'|'triangle'} type
  * @param {import('./rng.js').Rng} rng
@@ -77,6 +126,8 @@ export function sampleShapeParams(type, rng) {
   switch (type) {
     case 'l':
       return { corner: rng.pick(['nw', 'ne', 'sw', 'se']) };
+    case 'triangle':
+      return { orientation: rng.pick(['up', 'down', 'left', 'right']) };
     default:
       return {};
   }
@@ -97,6 +148,8 @@ export function rasterizeRoom(room) {
       return rasterizeCross(room);
     case 'circle':
       return rasterizeCircle(room);
+    case 'triangle':
+      return rasterizeTriangle(room, room.shape.params);
     default:
       throw new Error(`rasterizeRoom: unknown shape type "${type}"`);
   }

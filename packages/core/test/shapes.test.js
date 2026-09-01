@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { deriveRng } from '../src/rng.js';
-import { rasterizeL, rasterizeRect, rasterizeRoom, sampleShapeParams, rasterizeCross, rasterizeCircle } from '../src/shapes.js';
+import { rasterizeL, rasterizeRect, rasterizeRoom, sampleShapeParams, rasterizeCross, rasterizeCircle, rasterizeTriangle } from '../src/shapes.js';
 
 function room(x, y, w, h, shape) {
   return { id: 0, floor: 0, x, y, w, h, cx: x + w / 2, cy: y + h / 2, role: 'filler', doors: [], shape };
@@ -145,5 +145,55 @@ describe('rasterizeCircle', () => {
       expect(c.y).toBeGreaterThanOrEqual(r.y);
       expect(c.y).toBeLessThan(r.y + r.h);
     }
+  });
+});
+
+describe('rasterizeTriangle', () => {
+  const orientations = ['up', 'down', 'left', 'right'];
+
+  it('contains the rounded centroid for every orientation and a range of sizes', () => {
+    for (const orientation of orientations) {
+      for (const [w, h] of [[4, 4], [5, 7], [8, 3], [9, 9]]) {
+        const r = room(0, 0, w, h);
+        const cells = rasterizeTriangle(r, { orientation });
+        const target = `${Math.round(r.cx)},${Math.round(r.cy)}`;
+        expect(cells.map((c) => `${c.x},${c.y}`)).toContain(target);
+      }
+    }
+  });
+
+  it('is strictly fewer cells than the full bounding box for large-enough rooms', () => {
+    const r = room(0, 0, 9, 9);
+    for (const orientation of orientations) {
+      expect(rasterizeTriangle(r, { orientation }).length).toBeLessThan(r.w * r.h);
+    }
+  });
+
+  it('every returned cell is within the bounding box', () => {
+    const r = room(4, 4, 8, 6);
+    for (const orientation of orientations) {
+      for (const c of rasterizeTriangle(r, { orientation })) {
+        expect(c.x).toBeGreaterThanOrEqual(r.x);
+        expect(c.x).toBeLessThan(r.x + r.w);
+        expect(c.y).toBeGreaterThanOrEqual(r.y);
+        expect(c.y).toBeLessThan(r.y + r.h);
+      }
+    }
+  });
+
+  it('throws on an unknown orientation', () => {
+    const r = room(0, 0, 5, 5);
+    expect(() => rasterizeTriangle(r, { orientation: 'sideways' })).toThrow(/unknown orientation/);
+  });
+});
+
+describe('sampleShapeParams("triangle", rng)', () => {
+  it('returns one of the four orientations, deterministically for a given seed', () => {
+    const rngA = deriveRng('seed-tri', 'shape-params');
+    const rngB = deriveRng('seed-tri', 'shape-params');
+    const a = sampleShapeParams('triangle', rngA);
+    const b = sampleShapeParams('triangle', rngB);
+    expect(['up', 'down', 'left', 'right']).toContain(a.orientation);
+    expect(a).toEqual(b);
   });
 });
