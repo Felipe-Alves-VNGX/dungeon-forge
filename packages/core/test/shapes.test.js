@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { deriveRng } from '../src/rng.js';
-import { rasterizeL, rasterizeRect, rasterizeRoom, sampleShapeParams, rasterizeCross } from '../src/shapes.js';
+import { rasterizeL, rasterizeRect, rasterizeRoom, sampleShapeParams, rasterizeCross, rasterizeCircle } from '../src/shapes.js';
 
 function room(x, y, w, h, shape) {
   return { id: 0, floor: 0, x, y, w, h, cx: x + w / 2, cy: y + h / 2, role: 'filler', doors: [], shape };
@@ -113,5 +113,37 @@ describe('rasterizeCross', () => {
     const r = room(0, 0, 9, 9);
     const cells = rasterizeCross(r);
     expect(cells.length).toBeLessThan(r.w * r.h);
+  });
+});
+
+describe('rasterizeCircle', () => {
+  it('contains the rounded centroid for a range of sizes', () => {
+    for (const [w, h] of [[3, 3], [4, 5], [6, 6], [10, 7]]) {
+      const r = room(0, 0, w, h);
+      const cells = rasterizeCircle(r);
+      const target = `${Math.round(r.cx)},${Math.round(r.cy)}`;
+      expect(cells.map((c) => `${c.x},${c.y}`)).toContain(target);
+    }
+  });
+
+  it('excludes all four corners for a large-enough room', () => {
+    const r = room(0, 0, 9, 9);
+    const cells = rasterizeCircle(r);
+    const set = new Set(cells.map((c) => `${c.x},${c.y}`));
+    expect(set.has(`${r.x},${r.y}`)).toBe(false);
+    expect(set.has(`${r.x + r.w - 1},${r.y}`)).toBe(false);
+    expect(set.has(`${r.x},${r.y + r.h - 1}`)).toBe(false);
+    expect(set.has(`${r.x + r.w - 1},${r.y + r.h - 1}`)).toBe(false);
+  });
+
+  it('every returned cell is within the bounding box', () => {
+    const r = room(3, 3, 9, 7);
+    const cells = rasterizeCircle(r);
+    for (const c of cells) {
+      expect(c.x).toBeGreaterThanOrEqual(r.x);
+      expect(c.x).toBeLessThan(r.x + r.w);
+      expect(c.y).toBeGreaterThanOrEqual(r.y);
+      expect(c.y).toBeLessThan(r.y + r.h);
+    }
   });
 });
