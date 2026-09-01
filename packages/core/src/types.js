@@ -161,6 +161,7 @@
  * @property {number} height
  * @property {number} floors
  * @property {Uint8Array} cells
+ * @property {Uint16Array} roomIdAt     // parallel to cells; NO_ROOM (grid.js) where no room owns the cell
  * @property {Room[]} rooms
  * @property {Edge[]} edges
  * @property {VerticalLink[]} links

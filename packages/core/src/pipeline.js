@@ -1,6 +1,7 @@
 // packages/core/src/pipeline.js
 import { deriveRng } from './rng.js';
-import { CELL, createGrid, setCell } from './grid.js';
+import { CELL, createGrid, setCell, createRoomIdGrid, setRoomId } from './grid.js';
+import { rasterizeRoom } from './shapes.js';
 import { placeRooms } from './stages/01-place-rooms.js';
 import { triangulate } from './stages/02-triangulate.js';
 import { spanningTree } from './stages/03-spanning-tree.js';
@@ -65,6 +66,7 @@ function separateClampedRooms(floorRooms, width, height) {
 /** @param {import('./types.js').Config} config */
 export function generateDungeon(config) {
   const grid = createGrid(config.width, config.height, config.floors);
+  const roomIdAt = createRoomIdGrid(config.width, config.height, config.floors);
 
   const rooms = [];
   const edges = [];
@@ -92,10 +94,9 @@ export function generateDungeon(config) {
     separateClampedRooms(floorRooms, config.width, config.height);
 
     for (const room of floorRooms) {
-      for (let y = room.y; y < room.y + room.h; y++) {
-        for (let x = room.x; x < room.x + room.w; x++) {
-          setCell(grid, x, y, floor, config.width, config.height, CELL.ROOM);
-        }
+      for (const cell of rasterizeRoom(room)) {
+        setCell(grid, cell.x, cell.y, floor, config.width, config.height, CELL.ROOM);
+        setRoomId(roomIdAt, cell.x, cell.y, floor, config.width, config.height, room.id);
       }
     }
 
@@ -135,7 +136,7 @@ export function generateDungeon(config) {
     prune(grid, config.width, config.height, floor, config.pruneIterations);
 
     const { walls: floorWalls, doors: floorDoors } = extractWalls(
-      grid, config.width, config.height, floor, floorRooms
+      grid, roomIdAt, config.width, config.height, floor, floorRooms
     );
 
     for (const door of floorDoors) door.id += doorIdOffset;
@@ -166,6 +167,7 @@ export function generateDungeon(config) {
     height: config.height,
     floors: config.floors,
     cells: grid,
+    roomIdAt,
     rooms,
     edges,
     links,
