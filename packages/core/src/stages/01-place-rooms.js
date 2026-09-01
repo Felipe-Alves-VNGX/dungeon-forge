@@ -1,3 +1,5 @@
+import { sampleShapeParams } from '../shapes.js';
+
 /**
  * @param {import('../types.js').RoomParams} params
  * @param {number} floor
@@ -64,18 +66,28 @@ export function placeRooms(params, floor, rng) {
   const promoted = sorted.slice(0, params.count);
   const residual = sorted.slice(params.count);
 
-  const rooms = promoted.map((b, i) => ({
-    id: i,
-    floor,
-    x: b.x,
-    y: b.y,
-    w: b.w,
-    h: b.h,
-    cx: b.x + b.w / 2,
-    cy: b.y + b.h / 2,
-    role: 'filler',
-    doors: [],
-  }));
+  const shapeTable = params.shapes ?? [{ type: 'rect', weight: 1 }];
+
+  const rooms = promoted.map((b, i) => {
+    const rawType = rng.weightedPick(shapeTable, (e) => e.weight).type;
+    // L/cross rasterizers degenerate to a plain rectangle below a 4-cell
+    // side (notch = floor((dim-1)/3) is 0 at dim=3) — fall back to 'rect'
+    // so Room.shape.type never claims a shape the cells don't actually have.
+    const type = (rawType !== 'rect' && (b.w < 4 || b.h < 4)) ? 'rect' : rawType;
+    return {
+      id: i,
+      floor,
+      x: b.x,
+      y: b.y,
+      w: b.w,
+      h: b.h,
+      cx: b.x + b.w / 2,
+      cy: b.y + b.h / 2,
+      role: 'filler',
+      doors: [],
+      shape: { type, params: sampleShapeParams(type, rng) },
+    };
+  });
 
   const residualCells = residual.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
 

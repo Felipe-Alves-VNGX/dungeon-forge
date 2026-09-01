@@ -16,6 +16,23 @@ function footprintFree(grid, x, y, floor, width, height) {
   return true;
 }
 
+// A non-rectangular room's shape leaves CELL.EMPTY cells inside its own
+// bounding box (the notch of an L/cross, the corners of a circle/triangle).
+// Vertical-link steering is bbox-based by design (SPEC.md — no per-shape
+// changes here), so a stair footprint overlapping ANY room's bbox on this
+// floor must be rejected even where the cell itself reads CELL.EMPTY.
+function overlapsAnyRoomBbox(x, y, floorRooms) {
+  for (const room of floorRooms) {
+    if (
+      x < room.x + room.w && x + LINK_W > room.x &&
+      y < room.y + room.h && y + LINK_H > room.y
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // AABB gap distance (in cells) between a w×h footprint and a room's rect.
 // 0 means touching/overlapping; grows by 1 per cell of empty space between them.
 function rectGap(fx, fy, fw, fh, room) {
@@ -52,6 +69,8 @@ function collectCandidates(grid, width, height, floorA, floorB, roomsA, roomsB) 
     for (let x = 0; x < width; x++) {
       if (!footprintFree(grid, x, y, floorA, width, height)) continue;
       if (!footprintFree(grid, x, y, floorB, width, height)) continue;
+      if (overlapsAnyRoomBbox(x, y, roomsA)) continue;
+      if (overlapsAnyRoomBbox(x, y, roomsB)) continue;
       if (nearestRoomGap(x, y, roomsA) > MAX_ROOM_GAP) continue;
       if (nearestRoomGap(x, y, roomsB) > MAX_ROOM_GAP) continue;
       candidates.push({ x, y, cx: x + LINK_W / 2, cy: y + LINK_H / 2 });

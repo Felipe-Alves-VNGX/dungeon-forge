@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { CELL, createGrid, setCell, getCell } from '../../src/grid.js';
 import { carve, thickenCorridors } from '../../src/stages/06-carve.js';
+import { rasterizeL } from '../../src/shapes.js';
 
 const COSTS = { newHallway: 10, reuseHallway: 1, throughRoom: 50, turn: 2 };
 
@@ -111,6 +112,30 @@ describe('carve', () => {
     const hallwayOnFloor1 = grid.slice(floorSize, 2 * floorSize).filter((c) => c === CELL.HALLWAY).length;
     expect(hallwayOnFloor0).toBeGreaterThan(0);
     expect(hallwayOnFloor1).toBeGreaterThan(0);
+  });
+});
+
+describe('carve — non-rectangular rooms', () => {
+  it('connects two L-shaped rooms whose bbox centroid sits in the solid arm, not the notch', () => {
+    const width = 24;
+    const height = 24;
+    const grid = createGrid(width, height, 1);
+
+    const r0 = { ...room(0, 2, 2, 6, 6), shape: { type: 'l', params: { corner: 'ne' } } };
+    const r1 = { ...room(1, 14, 14, 6, 6), shape: { type: 'l', params: { corner: 'sw' } } };
+
+    for (const r of [r0, r1]) {
+      for (const cell of rasterizeL(r, r.shape.params)) {
+        setCell(grid, cell.x, cell.y, 0, width, height, CELL.ROOM);
+      }
+      // Sanity check the fixture matches this task's premise before trusting the rest of the test.
+      expect(getCell(grid, Math.round(r.cx), Math.round(r.cy), 0, width, height)).toBe(CELL.ROOM);
+    }
+
+    carve(grid, width, height, 0, [r0, r1], [{ a: 0, b: 1, weight: 1, kind: 'mst' }], COSTS);
+
+    const hallwayCount = Array.from(grid).filter((c) => c === CELL.HALLWAY).length;
+    expect(hallwayCount).toBeGreaterThan(0);
   });
 });
 

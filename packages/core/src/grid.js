@@ -26,3 +26,18 @@ export function setCell(grid, x, y, z, width, height, value) {
 export function inBounds(x, y, z, width, height, floors) {
   return x >= 0 && x < width && y >= 0 && y < height && z >= 0 && z < floors;
 }
+
+export const NO_ROOM = 0xffff;
+
+/** @param {number} width @param {number} height @param {number} floors */
+export function createRoomIdGrid(width, height, floors) {
+  return new Uint16Array(width * height * floors).fill(NO_ROOM);
+}
+
+export function getRoomId(roomIdAt, x, y, z, width, height) {
+  return roomIdAt[cellIndex(x, y, z, width, height)];
+}
+
+export function setRoomId(roomIdAt, x, y, z, width, height, roomId) {
+  roomIdAt[cellIndex(x, y, z, width, height)] = roomId;
+}

@@ -1,5 +1,5 @@
 // packages/core/src/stages/10-extract-walls.js
-import { CELL, getCell, inBounds } from '../grid.js';
+import { CELL, getCell, getRoomId, inBounds, NO_ROOM } from '../grid.js';
 
 function isWalkable(value) {
   return value === CELL.ROOM || value === CELL.HALLWAY || value === CELL.STAIR;
@@ -47,56 +47,58 @@ function isDoorOpening(cellValue) {
   return cellValue === CELL.HALLWAY || cellValue === CELL.STAIR;
 }
 
+const DOOR_NEIGHBORS = [
+  { dx: 0, dy: -1, dir: 'n' },
+  { dx: 0, dy: 1, dir: 's' },
+  { dx: -1, dy: 0, dir: 'w' },
+  { dx: 1, dy: 0, dir: 'e' },
+];
+
+function roomIdAtCell(roomIdAt, x, y, floor, width, height) {
+  if (!inBounds(x, y, floor, width, height, floor + 1)) return null;
+  const id = getRoomId(roomIdAt, x, y, floor, width, height);
+  return id === NO_ROOM ? null : id;
+}
+
 /**
  * Doors are NOT a byproduct of the silhouette pass: a room's wall directly
  * adjoining a hallway (or stair — see isDoorOpening) has no walkability
  * transition (both sides are walkable), so it never appears as a silhouette
- * edge. This pass walks each room's rectangle perimeter directly and checks
- * the single cell immediately outside each boundary unit-cell.
- *
- * Each unit door-edge is traced to its destination room right here, before
- * fusion — a single wall can legitimately serve two side-by-side corridors
- * that lead to two *different* rooms (no wall between them, just contiguous
- * HALLWAY cells), and fusing those into one WallSegment would force one
- * `toRoomId` onto a door that really goes two places. `fuseGroup` folds
- * `roomId` and `toRoomId` into fuseRuns' grouping key so a run only fuses
- * when every cell in it agrees on both.
+ * edge. This pass walks every cell that actually belongs to each room (via
+ * roomIdAt — the room's real shape, not its bounding box) and checks each of
+ * its 4 neighbors: any neighbor outside the room's own cell membership that
+ * is a door-opening is a candidate door edge, in the direction of that
+ * neighbor. Sweeping the room's bounding box and skipping non-member cells
+ * (rather than trying to walk just the perimeter directly) keeps this
+ * correct for concave shapes (L, cross) where the "perimeter" isn't a single
+ * simple loop — an inner concave wall is found the same way as an outer one.
  */
-function collectDoorEdges(grid, width, height, floor, rooms) {
+function collectDoorEdges(grid, roomIdAt, width, height, floor, rooms) {
   const horizontal = []; // door edge at row y, between (x,y-1) and (x,y)
   const vertical = [];   // door edge at column x, between (x-1,y) and (x,y)
 
   for (const room of rooms) {
-    // North edge: outside cell is (x, room.y - 1)
-    for (let x = room.x; x < room.x + room.w; x++) {
-      const outside = { x, y: room.y - 1 };
-      if (isDoorOpening(cellValueAt(grid, outside.x, outside.y, floor, width, height))) {
-        const toRoomId = traceDestinationRoom(grid, width, height, floor, rooms, room.id, outside);
-        horizontal.push({ x, y: room.y, roomId: room.id, toRoomId, fuseGroup: `${room.id}:${toRoomId}` });
-      }
-    }
-    // South edge: outside cell is (x, room.y + room.h)
-    for (let x = room.x; x < room.x + room.w; x++) {
-      const outside = { x, y: room.y + room.h };
-      if (isDoorOpening(cellValueAt(grid, outside.x, outside.y, floor, width, height))) {
-        const toRoomId = traceDestinationRoom(grid, width, height, floor, rooms, room.id, outside);
-        horizontal.push({ x, y: room.y + room.h, roomId: room.id, toRoomId, fuseGroup: `${room.id}:${toRoomId}` });
-      }
-    }
-    // West edge: outside cell is (room.x - 1, y)
     for (let y = room.y; y < room.y + room.h; y++) {
-      const outside = { x: room.x - 1, y };
-      if (isDoorOpening(cellValueAt(grid, outside.x, outside.y, floor, width, height))) {
-        const toRoomId = traceDestinationRoom(grid, width, height, floor, rooms, room.id, outside);
-        vertical.push({ x: room.x, y, roomId: room.id, toRoomId, fuseGroup: `${room.id}:${toRoomId}` });
-      }
-    }
-    // East edge: outside cell is (room.x + room.w, y)
-    for (let y = room.y; y < room.y + room.h; y++) {
-      const outside = { x: room.x + room.w, y };
-      if (isDoorOpening(cellValueAt(grid, outside.x, outside.y, floor, width, height))) {
-        const toRoomId = traceDestinationRoom(grid, width, height, floor, rooms, room.id, outside);
-        vertical.push({ x: room.x + room.w, y, roomId: room.id, toRoomId, fuseGroup: `${room.id}:${toRoomId}` });
+      for (let x = room.x; x < room.x + room.w; x++) {
+        if (roomIdAtCell(roomIdAt, x, y, floor, width, height) !== room.id) continue;
+
+        for (const { dx, dy, dir } of DOOR_NEIGHBORS) {
+          const ox = x + dx;
+          const oy = y + dy;
+          if (roomIdAtCell(roomIdAt, ox, oy, floor, width, height) === room.id) continue;
+
+          const outsideValue = cellValueAt(grid, ox, oy, floor, width, height);
+          if (!isDoorOpening(outsideValue)) continue;
+
+          const toRoomId = traceDestinationRoom(grid, roomIdAt, width, height, floor, room.id, { x: ox, y: oy });
+          const fuseGroup = `${room.id}:${toRoomId}:${dir}`;
+
+          if (dir === 'n' || dir === 's') {
+            horizontal.push({ x, y: dir === 's' ? y + 1 : y, roomId: room.id, toRoomId, fuseGroup });
+          } else {
+            vertical.push({ x: dir === 'e' ? x + 1 : x, y, roomId: room.id, toRoomId, fuseGroup });
+          }
+        }
       }
     }
   }
@@ -132,26 +134,16 @@ function fuseRuns(edges, axisKey, positionKey, groupKey) {
   return segments;
 }
 
-// Which side of its own room a door sits on — pure geometry, no grid walk.
-function doorDirection(door, room) {
-  if (door.y1 === door.y2) return door.y1 === room.y ? 'n' : 's';
-  return door.x1 === room.x ? 'w' : 'e';
-}
-
-function roomAt(rooms, x, y) {
-  return rooms.find((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
-}
-
 /**
  * Traces a door's corridor through the grid to whichever Room it actually
  * reaches — BFS (not DFS) so "nearest room" is deterministic and
  * order-independent, matching the rest of this stage's determinism.
  */
-function traceDestinationRoom(grid, width, height, floor, rooms, originRoomId, start) {
+function traceDestinationRoom(grid, roomIdAt, width, height, floor, originRoomId, start) {
   const startValue = cellValueAt(grid, start.x, start.y, floor, width, height);
   if (startValue === CELL.ROOM) {
-    const r = roomAt(rooms, start.x, start.y);
-    return r && r.id !== originRoomId ? r.id : null;
+    const id = roomIdAtCell(roomIdAt, start.x, start.y, floor, width, height);
+    return id !== null && id !== originRoomId ? id : null;
   }
 
   const seen = new Set([`${start.x},${start.y}`]);
@@ -167,8 +159,8 @@ function traceDestinationRoom(grid, width, height, floor, rooms, originRoomId, s
 
       const v = getCell(grid, nx, ny, floor, width, height);
       if (v === CELL.ROOM) {
-        const r = roomAt(rooms, nx, ny);
-        if (r && r.id !== originRoomId) return r.id;
+        const id = roomIdAtCell(roomIdAt, nx, ny, floor, width, height);
+        if (id !== null && id !== originRoomId) return id;
         continue; // don't walk through a room's interior
       }
       if (v === CELL.HALLWAY || v === CELL.STAIR) queue.push({ x: nx, y: ny });
@@ -182,7 +174,7 @@ function traceDestinationRoom(grid, width, height, floor, rooms, originRoomId, s
  * @param {number} width @param {number} height @param {number} floor
  * @param {import('../types.js').Room[]} rooms
  */
-export function extractWalls(grid, width, height, floor, rooms) {
+export function extractWalls(grid, roomIdAt, width, height, floor, rooms) {
   const silhouette = collectSilhouetteEdges(grid, width, height, floor);
   silhouette.horizontal.sort((a, b) => a.y - b.y || a.x - b.x);
   silhouette.vertical.sort((a, b) => a.x - b.x || a.y - b.y);
@@ -194,15 +186,13 @@ export function extractWalls(grid, width, height, floor, rooms) {
     floor, x1: s.axis, y1: s.start, x2: s.axis, y2: s.end, isDoor: false, doorId: null,
   }));
 
-  const doorEdges = collectDoorEdges(grid, width, height, floor, rooms);
+  const doorEdges = collectDoorEdges(grid, roomIdAt, width, height, floor, rooms);
   doorEdges.horizontal.sort((a, b) => a.y - b.y || a.x - b.x);
   doorEdges.vertical.sort((a, b) => a.x - b.x || a.y - b.y);
 
   function parseFuseGroup(group) {
-    const sep = group.indexOf(':');
-    const roomId = Number(group.slice(0, sep));
-    const toRoomIdStr = group.slice(sep + 1);
-    return { roomId, toRoomId: toRoomIdStr === 'null' ? null : Number(toRoomIdStr) };
+    const [roomIdStr, toRoomIdStr, dir] = group.split(':');
+    return { roomId: Number(roomIdStr), toRoomId: toRoomIdStr === 'null' ? null : Number(toRoomIdStr), dir };
   }
 
   const hDoorSegments = fuseRuns(doorEdges.horizontal, 'y', 'x', 'fuseGroup').map((s) => ({
@@ -214,14 +204,11 @@ export function extractWalls(grid, width, height, floor, rooms) {
 
   const doorWalls = [...hDoorSegments, ...vDoorSegments];
 
-  const roomsById = new Map(rooms.map((r) => [r.id, r]));
-
   let nextDoorId = 0;
   const doors = [];
   for (const wall of doorWalls) {
     const doorId = nextDoorId++;
     wall.doorId = doorId;
-    const room = roomsById.get(wall.roomId);
     doors.push({
       id: doorId,
       floor,
@@ -231,7 +218,7 @@ export function extractWalls(grid, width, height, floor, rooms) {
       y2: wall.y2,
       roomId: wall.roomId,
       secret: false,
-      dir: doorDirection(wall, room),
+      dir: wall.dir,
       toRoomId: wall.toRoomId,
     });
   }
@@ -245,7 +232,7 @@ export function extractWalls(grid, width, height, floor, rooms) {
     room.doors = doorsByRoom.get(room.id) ?? [];
   }
 
-  const publicDoorWalls = doorWalls.map(({ roomId, toRoomId, ...rest }) => rest);
+  const publicDoorWalls = doorWalls.map(({ roomId, toRoomId, dir, ...rest }) => rest);
   const walls = [...hWalls, ...vWalls, ...publicDoorWalls];
 
   return { walls, doors };

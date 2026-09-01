@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateDungeon } from '../src/pipeline.js';
 import { validateDungeon } from '../src/validate.js';
-import { CELL } from '../src/grid.js';
+import { CELL, getRoomId, NO_ROOM } from '../src/grid.js';
 
 const CONFIG = {
   seed: 'plan-m0-m3',
@@ -167,5 +167,56 @@ describe('generateDungeon — validator regressions (M7)', () => {
     const { ok, errors } = validateDungeon(dungeon);
     expect(errors).toEqual([]);
     expect(ok).toBe(true);
+  });
+});
+
+describe('generateDungeon — roomIdAt', () => {
+  it('every CELL.ROOM cell has a matching roomIdAt entry, and every other cell is NO_ROOM', () => {
+    const config = {
+      seed: 'roomid-1', floors: 1, width: 40, height: 40,
+      rooms: { count: 6, sizeMean: 6, sizeStdDev: 2, sizeMin: 3, sizeMax: 10, spawnRadius: 14, separationIters: 40 },
+      cycleRate: 0.25, verticalLinksPerGap: 2,
+      carve: { newHallway: 10, reuseHallway: 1, throughRoom: 50, turn: 2 },
+      pruneIterations: 8,
+      key: { scheme: 'flat', numberJunctions: false, startAt: 1, padTo: 2, exitsInEntries: true },
+    };
+    const dungeon = generateDungeon(config);
+    expect(dungeon.roomIdAt).toBeInstanceOf(Uint16Array);
+    expect(dungeon.roomIdAt.length).toBe(dungeon.cells.length);
+
+    for (let i = 0; i < dungeon.cells.length; i++) {
+      const y = Math.floor(i / config.width) % config.height;
+      const x = i % config.width;
+      const z = Math.floor(i / (config.width * config.height));
+      const cellValue = dungeon.cells[i];
+      const roomId = getRoomId(dungeon.roomIdAt, x, y, z, config.width, config.height);
+      if (cellValue === 1 /* CELL.ROOM */) {
+        expect(roomId).not.toBe(NO_ROOM);
+        expect(dungeon.rooms.some((r) => r.id === roomId)).toBe(true);
+      } else {
+        expect(roomId).toBe(NO_ROOM);
+      }
+    }
+  });
+
+  it('with an all-circle shape table, every room still has its centroid cell as CELL.ROOM', () => {
+    const config = {
+      seed: 'roomid-2', floors: 1, width: 40, height: 40,
+      rooms: {
+        count: 6, sizeMean: 6, sizeStdDev: 2, sizeMin: 4, sizeMax: 10, spawnRadius: 14, separationIters: 40,
+        shapes: [{ type: 'circle', weight: 1 }],
+      },
+      cycleRate: 0.25, verticalLinksPerGap: 2,
+      carve: { newHallway: 10, reuseHallway: 1, throughRoom: 50, turn: 2 },
+      pruneIterations: 8,
+      key: { scheme: 'flat', numberJunctions: false, startAt: 1, padTo: 2, exitsInEntries: true },
+    };
+    const dungeon = generateDungeon(config);
+    for (const room of dungeon.rooms) {
+      expect(room.shape.type).toBe('circle');
+      const cx = Math.round(room.cx);
+      const cy = Math.round(room.cy);
+      expect(dungeon.cells[cy * config.width + cx]).toBe(1 /* CELL.ROOM */);
+    }
   });
 });

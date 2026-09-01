@@ -27,6 +27,12 @@
  */
 
 /**
+ * @typedef {Object} RoomShapeEntry
+ * @property {'rect'|'l'|'cross'|'circle'|'triangle'} type
+ * @property {number} weight            // relative weight, need not sum to 1
+ */
+
+/**
  * @typedef {Object} RoomParams
  * @property {number} count
  * @property {number} sizeMean
@@ -35,6 +41,7 @@
  * @property {number} sizeMax
  * @property {number} spawnRadius
  * @property {number} separationIters
+ * @property {RoomShapeEntry[]} [shapes]  // default: [{type:'rect', weight:1}]. Non-'rect' entries only apply to rooms whose w and h are both >=4 — smaller rooms always fall back to 'rect' (see 01-place-rooms.js).
  */
 
 /**
@@ -57,6 +64,7 @@
  * @property {number} cy
  * @property {RoomRole} role
  * @property {number[]} doors
+ * @property {{type: string, params: Object}} [shape]   // which shape generated this room's cells; optional — absent means 'rect'
  */
 
 /** @typedef {'entrance'|'climax'|'treasure'|'junction'|'filler'} RoomRole */
@@ -153,6 +161,7 @@
  * @property {number} height
  * @property {number} floors
  * @property {Uint8Array} cells
+ * @property {Uint16Array} roomIdAt     // parallel to cells; NO_ROOM (grid.js) where no room owns the cell
  * @property {Room[]} rooms
  * @property {Edge[]} edges
  * @property {VerticalLink[]} links
