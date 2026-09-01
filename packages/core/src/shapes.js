@@ -35,6 +35,21 @@ export function rasterizeL(room, params) {
   return cells;
 }
 
+export function rasterizeCross(room) {
+  const notchW = Math.floor((room.w - 1) / 3);
+  const notchH = Math.floor((room.h - 1) / 3);
+
+  const cells = [];
+  for (let dy = 0; dy < room.h; dy++) {
+    for (let dx = 0; dx < room.w; dx++) {
+      const inVerticalArm = dx >= notchW && dx < room.w - notchW;
+      const inHorizontalArm = dy >= notchH && dy < room.h - notchH;
+      if (inVerticalArm || inHorizontalArm) cells.push({ x: room.x + dx, y: room.y + dy });
+    }
+  }
+  return cells;
+}
+
 /**
  * @param {'rect'|'l'|'cross'|'circle'|'triangle'} type
  * @param {import('./rng.js').Rng} rng
@@ -59,6 +74,8 @@ export function rasterizeRoom(room) {
       return rasterizeRect(room);
     case 'l':
       return rasterizeL(room, room.shape.params);
+    case 'cross':
+      return rasterizeCross(room);
     default:
       throw new Error(`rasterizeRoom: unknown shape type "${type}"`);
   }
