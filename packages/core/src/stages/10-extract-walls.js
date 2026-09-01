@@ -231,7 +231,7 @@ export function extractWalls(grid, roomIdAt, width, height, floor, rooms) {
     room.doors = doorsByRoom.get(room.id) ?? [];
   }
 
-  const publicDoorWalls = doorWalls.map(({ roomId, toRoomId, ...rest }) => rest);
+  const publicDoorWalls = doorWalls.map(({ roomId, toRoomId, dir, ...rest }) => rest);
   const walls = [...hWalls, ...vWalls, ...publicDoorWalls];
 
   return { walls, doors };
