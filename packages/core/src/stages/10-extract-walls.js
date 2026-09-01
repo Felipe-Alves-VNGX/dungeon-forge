@@ -182,18 +182,7 @@ function traceDestinationRoom(grid, width, height, floor, rooms, originRoomId, s
  * @param {number} width @param {number} height @param {number} floor
  * @param {import('../types.js').Room[]} rooms
  */
-export function extractWalls(grid, roomIdAtOrWidth, width, height, floor, rooms) {
-  // Handle both old and new signatures:
-  // Old: extractWalls(grid, width, height, floor, rooms)
-  // New: extractWalls(grid, roomIdAt, width, height, floor, rooms)
-  if (typeof roomIdAtOrWidth === 'number') {
-    // Old signature: roomIdAtOrWidth is actually width
-    rooms = floor;
-    floor = height;
-    height = width;
-    width = roomIdAtOrWidth;
-  }
-
+export function extractWalls(grid, width, height, floor, rooms) {
   const silhouette = collectSilhouetteEdges(grid, width, height, floor);
   silhouette.horizontal.sort((a, b) => a.y - b.y || a.x - b.x);
   silhouette.vertical.sort((a, b) => a.x - b.x || a.y - b.y);
