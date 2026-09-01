@@ -43,6 +43,23 @@ const CONFIGS = [
     cycleRate: 0.15, verticalLinksPerGap: 2, carve: CARVE, pruneIterations: 8,
     key: { scheme: 'flat', numberJunctions: false, startAt: 1, padTo: 2, exitsInEntries: true },
   },
+  {
+    label: 'multi-floor, mixed room shapes',
+    floors: 3, width: 55, height: 55,
+    rooms: {
+      ...ROOM_PARAMS,
+      sizeMin: 4, // shape rasterizers need >=4 on a side to produce a non-degenerate notch/arm
+      shapes: [
+        { type: 'rect', weight: 1 },
+        { type: 'l', weight: 1 },
+        { type: 'cross', weight: 1 },
+        { type: 'circle', weight: 1 },
+        { type: 'triangle', weight: 1 },
+      ],
+    },
+    cycleRate: 0.25, verticalLinksPerGap: 2, carve: CARVE, pruneIterations: 8,
+    key: { scheme: 'per-floor', numberJunctions: false, startAt: 1, padTo: 2, exitsInEntries: true },
+  },
 ];
 
 describe(`validateDungeon — property test (${SEED_COUNT} seeds x ${CONFIGS.length} configs)`, () => {
