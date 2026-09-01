@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CELL, createGrid, cellIndex, getCell, setCell, inBounds } from '../src/grid.js';
+import { CELL, createGrid, cellIndex, getCell, setCell, inBounds, NO_ROOM, createRoomIdGrid, getRoomId, setRoomId } from '../src/grid.js';
 
 describe('grid', () => {
   it('CELL enum has the five expected values', () => {
@@ -32,5 +32,22 @@ describe('grid', () => {
     expect(inBounds(0, 5, 0, 5, 5, 2)).toBe(false);
     expect(inBounds(0, 0, 2, 5, 5, 2)).toBe(false);
     expect(inBounds(-1, 0, 0, 5, 5, 2)).toBe(false);
+  });
+});
+
+describe('room-id grid', () => {
+  it('starts every cell as NO_ROOM', () => {
+    const roomIdAt = createRoomIdGrid(5, 5, 2);
+    expect(roomIdAt.length).toBe(5 * 5 * 2);
+    expect(Array.from(roomIdAt).every((v) => v === NO_ROOM)).toBe(true);
+  });
+
+  it('set/get round-trips a room id at a specific cell', () => {
+    const roomIdAt = createRoomIdGrid(5, 5, 2);
+    setRoomId(roomIdAt, 2, 3, 1, 5, 5, 7);
+    expect(getRoomId(roomIdAt, 2, 3, 1, 5, 5)).toBe(7);
+    // Neighboring cell and other floor stay untouched.
+    expect(getRoomId(roomIdAt, 2, 3, 0, 5, 5)).toBe(NO_ROOM);
+    expect(getRoomId(roomIdAt, 3, 3, 1, 5, 5)).toBe(NO_ROOM);
   });
 });
