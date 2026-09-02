@@ -69,6 +69,24 @@ describe('createFloorScenes', () => {
     expect(floor1Call.regions[0].flags['dungeon-forge'].linkId).toBe(0);
     expect(floor0Call.regions[0].shapes[0]).toEqual({ type: 'rectangle', x: 500, y: 500, width: 200, height: 100 });
   });
+
+  it('deletes any already-created Scene if a later floor\'s Scene.create fails, leaving nothing orphaned', async () => {
+    const sceneDeletes = [];
+    let callCount = 0;
+    globalThis.Scene = {
+      create: vi.fn(async (data) => {
+        callCount++;
+        if (callCount === 2) throw new Error('second floor failed');
+        const del = vi.fn(async () => {});
+        sceneDeletes.push(del);
+        return { id: `scene-${data.name}`, name: data.name, delete: del };
+      }),
+    };
+    const pageIdByAreaId = new Map([[0, 'page-0'], [1, 'page-1']]);
+    await expect(createFloorScenes(dungeon(), { seed: 'x', gridSize: 100 }, pageIdByAreaId, 'journal-fake-id')).rejects.toThrow('second floor failed');
+    expect(sceneDeletes).toHaveLength(1);
+    expect(sceneDeletes[0]).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('wireStairRegionBehaviors', () => {

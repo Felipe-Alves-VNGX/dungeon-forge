@@ -28,38 +28,43 @@ export async function createFloorScenes(dungeon, config, pageIdByAreaId, journal
   const rolesByRoomId = new Map(dungeon.rooms.map((r) => [r.id, r.role]));
 
   const scenes = [];
-  for (let floor = 0; floor < dungeon.floors; floor++) {
-    const walls = dungeon.walls
-      .filter((w) => w.floor === floor)
-      .map((w) => buildWallData(w, doorsById, gridSize));
+  try {
+    for (let floor = 0; floor < dungeon.floors; floor++) {
+      const walls = dungeon.walls
+        .filter((w) => w.floor === floor)
+        .map((w) => buildWallData(w, doorsById, gridSize));
 
-    const notes = dungeon.areas
-      .filter((a) => a.floor === floor)
-      .map((a) => {
-        const pageId = pageIdByAreaId.get(a.id);
-        const role = rolesByRoomId.get(a.roomId) ?? 'filler';
-        return buildNoteData(a, gridSize, pageId, journalId, role);
+      const notes = dungeon.areas
+        .filter((a) => a.floor === floor)
+        .map((a) => {
+          const pageId = pageIdByAreaId.get(a.id);
+          const role = rolesByRoomId.get(a.roomId) ?? 'filler';
+          return buildNoteData(a, gridSize, pageId, journalId, role);
+        });
+
+      const regions = dungeon.links
+        .filter((link) => link.fromFloor === floor || link.toFloor === floor)
+        .map((link) => ({
+          name: `stair-${link.id}`,
+          shapes: [regionShapeForLink(link, gridSize)],
+          flags: { 'dungeon-forge': { linkId: link.id } },
+        }));
+
+      const scene = await Scene.create({
+        name: sceneNameForFloor(dungeon, floor, config),
+        width: dungeon.width * gridSize,
+        height: dungeon.height * gridSize,
+        grid: { size: gridSize, type: 1 },
+        background: { src: null },
+        walls,
+        notes,
+        regions,
       });
-
-    const regions = dungeon.links
-      .filter((link) => link.fromFloor === floor || link.toFloor === floor)
-      .map((link) => ({
-        name: `stair-${link.id}`,
-        shapes: [regionShapeForLink(link, gridSize)],
-        flags: { 'dungeon-forge': { linkId: link.id } },
-      }));
-
-    const scene = await Scene.create({
-      name: sceneNameForFloor(dungeon, floor, config),
-      width: dungeon.width * gridSize,
-      height: dungeon.height * gridSize,
-      grid: { size: gridSize, type: 1 },
-      background: { src: null },
-      walls,
-      notes,
-      regions,
-    });
-    scenes.push(scene);
+      scenes.push(scene);
+    }
+  } catch (err) {
+    await Promise.all(scenes.map((s) => s.delete()));
+    throw err;
   }
   return scenes;
 }
