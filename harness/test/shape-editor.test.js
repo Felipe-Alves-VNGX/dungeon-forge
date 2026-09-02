@@ -1,14 +1,14 @@
 // harness/test/shape-editor.test.js
 import { describe, it, expect } from 'vitest';
-import { SHAPE_TYPES, defaultParamsFor, smallRoomWarningApplies, buildShapeEditorSVG } from '../src/shape-editor.js';
+import { SHAPE_TYPES, defaultParamsFor, smallRoomWarningApplies, buildShapeEditorSVG, cellsFromRoom, toggleCustomCell, isDisconnected, wireShapeEditorToggle } from '../src/shape-editor.js';
 
 function room(x, y, w, h, shape) {
   return { id: 0, floor: 0, x, y, w, h, cx: x + w / 2, cy: y + h / 2, role: 'filler', doors: [], shape };
 }
 
 describe('SHAPE_TYPES', () => {
-  it('lists exactly the 5 macro shape types in order, with param config only for l and triangle', () => {
-    expect(SHAPE_TYPES.map((s) => s.type)).toEqual(['rect', 'l', 'cross', 'circle', 'triangle']);
+  it('lists the macro shape types in order, with param config only for l and triangle', () => {
+    expect(SHAPE_TYPES.slice(0, 5).map((s) => s.type)).toEqual(['rect', 'l', 'cross', 'circle', 'triangle']);
     expect(SHAPE_TYPES.find((s) => s.type === 'rect').param).toBeNull();
     expect(SHAPE_TYPES.find((s) => s.type === 'cross').param).toBeNull();
     expect(SHAPE_TYPES.find((s) => s.type === 'circle').param).toBeNull();
@@ -58,5 +58,67 @@ describe('buildShapeEditorSVG', () => {
     const dungeon = { width: 40, height: 40 };
     const svg = buildShapeEditorSVG(r, dungeon, 20);
     expect(svg).not.toContain('data-cx');
+  });
+});
+
+describe('SHAPE_TYPES (custom)', () => {
+  it('includes a 6th, param-less custom entry', () => {
+    expect(SHAPE_TYPES.map((s) => s.type)).toEqual(['rect', 'l', 'cross', 'circle', 'triangle', 'custom']);
+    expect(SHAPE_TYPES.find((s) => s.type === 'custom').param).toBeNull();
+  });
+});
+
+describe('cellsFromRoom', () => {
+  it('converts rasterizeRoom output into relative dx,dy pairs', () => {
+    const r = room(5, 5, 2, 2); // plain rect, no shape
+    expect(cellsFromRoom(r)).toEqual([[0, 0], [1, 0], [0, 1], [1, 1]]);
+  });
+});
+
+describe('toggleCustomCell', () => {
+  const r = room(5, 5, 3, 3);
+
+  it('adds an absolute cell not already present', () => {
+    const next = toggleCustomCell([[0, 0]], r, 6, 5); // absolute (6,5) -> relative (1,0)
+    expect(next).toEqual([[0, 0], [1, 0]]);
+  });
+
+  it('removes an absolute cell already present', () => {
+    const next = toggleCustomCell([[0, 0], [1, 0]], r, 6, 5);
+    expect(next).toEqual([[0, 0]]);
+  });
+
+  it('refuses to remove the last remaining cell', () => {
+    const next = toggleCustomCell([[0, 0]], r, 5, 5); // absolute (5,5) -> relative (0,0), the only cell
+    expect(next).toEqual([[0, 0]]);
+  });
+});
+
+describe('isDisconnected', () => {
+  it('is false for an empty or single-cell list', () => {
+    expect(isDisconnected([])).toBe(false);
+    expect(isDisconnected([[0, 0]])).toBe(false);
+  });
+  it('is false for a 4-connected set', () => {
+    expect(isDisconnected([[0, 0], [1, 0], [1, 1]])).toBe(false);
+  });
+  it('is true for two separate islands', () => {
+    expect(isDisconnected([[0, 0], [5, 5]])).toBe(true);
+  });
+});
+
+describe('buildShapeEditorSVG (interactive mode)', () => {
+  it('adds data-cx/data-cy and shape-cell class to every cell in the padded area when interactive', () => {
+    const r = room(5, 5, 2, 2, { type: 'custom', params: { cells: [[0, 0]] } });
+    const dungeon = { width: 40, height: 40 };
+    const svg = buildShapeEditorSVG(r, dungeon, 20, true);
+    expect(svg).toContain('data-cx');
+    expect(svg).toContain('class="shape-cell shape-cell-on"');
+  });
+
+  it('is unchanged (read-only, no data-cx) when interactive is false or omitted', () => {
+    const r = room(5, 5, 2, 2);
+    const dungeon = { width: 40, height: 40 };
+    expect(buildShapeEditorSVG(r, dungeon, 20)).not.toContain('data-cx');
   });
 });
