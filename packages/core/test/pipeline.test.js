@@ -1,6 +1,6 @@
 // packages/core/test/pipeline.test.js
 import { describe, it, expect } from 'vitest';
-import { generateDungeon } from '../src/pipeline.js';
+import { generateDungeon, rasterizeRoom } from '../src/pipeline.js';
 import { validateDungeon } from '../src/validate.js';
 import { CELL, getRoomId, NO_ROOM } from '../src/grid.js';
 
@@ -218,5 +218,14 @@ describe('generateDungeon — roomIdAt', () => {
       const cy = Math.round(room.cy);
       expect(dungeon.cells[cy * config.width + cx]).toBe(1 /* CELL.ROOM */);
     }
+  });
+});
+
+describe('rasterizeRoom re-export', () => {
+  it('is importable from the package entry point and behaves like shapes.js\'s rasterizeRoom', () => {
+    const room = { x: 2, y: 3, w: 4, h: 4, cx: 4, cy: 5 };
+    const cells = rasterizeRoom(room);
+    expect(cells).toHaveLength(16);
+    expect(cells).toContainEqual({ x: 2, y: 3 });
   });
 });
