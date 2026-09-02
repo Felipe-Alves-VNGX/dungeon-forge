@@ -6,6 +6,7 @@
 // exists, since a Region's teleport destination is the *other* floor's
 // Region UUID, unknowable until that Scene has been created).
 import { buildWallData, buildNoteData } from './shared/geometry.js';
+import { createKeyJournal, mapAreaPagesById } from './shared/key-journal.js';
 
 function sceneNameForFloor(dungeon, floor, config) {
   return `${config.seed} — Andar ${floor + 1}`;
@@ -21,7 +22,7 @@ function regionShapeForLink(link, gridSize) {
   };
 }
 
-export async function createFloorScenes(dungeon, config, pageIdByAreaId) {
+export async function createFloorScenes(dungeon, config, pageIdByAreaId, journalId) {
   const gridSize = config.gridSize ?? 100;
   const doorsById = new Map((dungeon.doors ?? []).map((d) => [d.id, d]));
   const rolesByRoomId = new Map(dungeon.rooms.map((r) => [r.id, r.role]));
@@ -37,7 +38,7 @@ export async function createFloorScenes(dungeon, config, pageIdByAreaId) {
       .map((a) => {
         const pageId = pageIdByAreaId.get(a.id);
         const role = rolesByRoomId.get(a.roomId) ?? 'filler';
-        return buildNoteData(a, gridSize, pageId, /* journalId set by caller below */ undefined, role);
+        return buildNoteData(a, gridSize, pageId, journalId, role);
       });
 
     const regions = dungeon.links
@@ -61,4 +62,45 @@ export async function createFloorScenes(dungeon, config, pageIdByAreaId) {
     scenes.push(scene);
   }
   return scenes;
+}
+
+export async function wireStairRegionBehaviors(scenes, dungeon) {
+  const regionByLinkId = new Map();
+  for (const scene of scenes) {
+    for (const region of scene.regions.contents) {
+      const linkId = region.flags?.['dungeon-forge']?.linkId;
+      if (linkId === undefined) continue;
+      if (!regionByLinkId.has(linkId)) regionByLinkId.set(linkId, []);
+      regionByLinkId.get(linkId).push(region);
+    }
+  }
+
+  for (const link of dungeon.links) {
+    const [regionA, regionB] = regionByLinkId.get(link.id) ?? [];
+    if (!regionA || !regionB) continue; // shouldn't happen for a valid Dungeon; nothing to wire otherwise
+    await regionA.createEmbeddedDocuments('RegionBehavior', [
+      { name: 'teleport', type: 'teleportToken', system: { destination: regionB.uuid, choice: false } },
+    ]);
+    await regionB.createEmbeddedDocuments('RegionBehavior', [
+      { name: 'teleport', type: 'teleportToken', system: { destination: regionA.uuid, choice: false } },
+    ]);
+  }
+}
+
+export async function emitV13(dungeon, config) {
+  const journal = await createKeyJournal(dungeon, config);
+  try {
+    const pageIdByAreaId = mapAreaPagesById(journal, dungeon);
+    const scenes = await createFloorScenes(dungeon, config, pageIdByAreaId, journal.id);
+    try {
+      await wireStairRegionBehaviors(scenes, dungeon);
+    } catch (err) {
+      await Promise.all(scenes.map((s) => s.delete()));
+      throw err;
+    }
+    return { journal, scenes };
+  } catch (err) {
+    await journal.delete();
+    throw err;
+  }
 }
