@@ -4,7 +4,13 @@
 // generate() API on the module's own game.modules entry, per Foundry's
 // standard module-API convention — a macro (see ../macros/gerar-masmorra.js)
 // calls game.modules.get('dungeon-forge').api.generate(config).
-import { generateDungeon } from '@dungeon-forge/core';
+// Foundry loads esmodules directly in the browser (no bundler, no node_modules
+// resolution) — a bare specifier like '@dungeon-forge/core' cannot resolve there,
+// only in Node/Vitest via npm workspace symlinks. This relative path resolves
+// via standard browser ESM URL resolution instead, requiring a sibling symlink
+// of packages/core at Data/modules/core alongside this module's own symlink
+// (documented in the package's README/deploy notes — see Task 5's follow-up).
+import { generateDungeon } from '../../core/src/pipeline.js';
 import { emitV13 } from './v13.js';
 
 export async function generate(config) {
