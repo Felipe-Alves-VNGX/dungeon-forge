@@ -113,6 +113,15 @@ function renderShapeEditor() {
   el('shape-w-value').textContent = room.w;
   el('shape-h-value').textContent = room.h;
 
+  // In custom mode, w/h are derived from the bounding box of shape.params.cells
+  // (kept in sync by applyCustomToggle on every cell toggle) — they are never
+  // a direct user input in that mode, so the steppers must be disabled.
+  const sizeSteppersDisabled = type === 'custom';
+  el('shape-w-minus').disabled = sizeSteppersDisabled;
+  el('shape-w-plus').disabled = sizeSteppersDisabled;
+  el('shape-h-minus').disabled = sizeSteppersDisabled;
+  el('shape-h-plus').disabled = sizeSteppersDisabled;
+
   const warning = el('shape-warning');
   if (type === 'custom' && isDisconnected(room.shape.params.cells)) {
     warning.hidden = false;
@@ -184,6 +193,11 @@ function applyShapeParam(value) {
 function applySizeDelta(dim, delta) {
   const room = dungeon.rooms.find((r) => r.id === selectedRoomId);
   if (!room) return;
+  // Defense in depth: w/h steppers are disabled in the UI while in custom
+  // mode (renderShapeEditor), but guard here too in case this is ever
+  // reached some other way (e.g. a non-conformant browser still firing
+  // click on a disabled button, or a future direct call).
+  if (room.shape?.type === 'custom') return;
   const max = dim === 'w' ? dungeon.width - room.x : dungeon.height - room.y;
   const next = Math.max(1, Math.min(max, room[dim] + delta));
   if (next === room[dim]) return;

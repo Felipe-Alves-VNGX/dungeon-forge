@@ -41,6 +41,9 @@ describe('smallRoomWarningApplies', () => {
     expect(smallRoomWarningApplies('l', 4, 4)).toBe(false);
     expect(smallRoomWarningApplies('circle', 6, 5)).toBe(false);
   });
+  it('is false for custom regardless of size, since custom has no degenerate-shape concept', () => {
+    expect(smallRoomWarningApplies('custom', 3, 3)).toBe(false);
+  });
 });
 
 describe('buildShapeEditorSVG', () => {

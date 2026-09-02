@@ -50,7 +50,7 @@ export function defaultParamsFor(type) {
 }
 
 export function smallRoomWarningApplies(type, w, h) {
-  return type !== 'rect' && (w < 4 || h < 4);
+  return type !== 'rect' && type !== 'custom' && (w < 4 || h < 4);
 }
 
 export function cellsFromRoom(room) {
