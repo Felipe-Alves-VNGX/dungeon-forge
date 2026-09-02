@@ -1,6 +1,7 @@
 // packages/adapter-foundry/test/shared/geometry.test.js
 import { describe, it, expect } from 'vitest';
 import { toPixel, buildWallData, buildNoteData } from '../../src/shared/geometry.js';
+import { iconForRole } from '../../src/shared/icons.js';
 
 describe('toPixel', () => {
   it('multiplies a cell coordinate by gridSize', () => {
@@ -38,9 +39,9 @@ describe('buildWallData', () => {
 });
 
 describe('buildNoteData', () => {
-  it('builds a Note referencing the given journal/page and centered on the area', () => {
+  it('builds a Note referencing the given journal/page, centered on the area, with the role icon', () => {
     const area = { id: 3, label: '1-02', floor: 0, roomId: 5, cx: 10.5, cy: 8, exits: [] };
-    const data = buildNoteData(area, 100, 'page123', 'journal456');
+    const data = buildNoteData(area, 100, 'page123', 'journal456', 'treasure');
     expect(data).toEqual({
       entryId: 'journal456',
       pageId: 'page123',
@@ -49,7 +50,7 @@ describe('buildNoteData', () => {
       text: '1-02',
       fontSize: 32,
       textAnchor: 0,
-      texture: { src: 'icons/svg/village.svg' },
+      texture: { src: iconForRole('treasure') },
       iconSize: 60,
     });
   });

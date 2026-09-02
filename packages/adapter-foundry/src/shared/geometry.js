@@ -12,6 +12,8 @@
 // masks secret doors for the baked floor-plan image. Foundry's own
 // wall/vision system is what should hide a secret door from players here.
 
+import { iconForRole } from './icons.js';
+
 const WALL_SENSE_NORMAL = 20; // CONST.WALL_SENSE_TYPES.NORMAL
 const WALL_DOOR_NONE = 0;     // CONST.WALL_DOOR_TYPES.NONE
 const WALL_DOOR_DOOR = 1;     // CONST.WALL_DOOR_TYPES.DOOR
@@ -22,7 +24,6 @@ const TEXT_ANCHOR_CENTER = 0; // CONST.TEXT_ANCHOR_POINTS.CENTER
 
 const NOTE_FONT_SIZE = 32;      // SPEC.md §5.14: "derivado de gridSize, mínimo 24" — 32 covers gridSize=100 default
 const NOTE_ICON_SCALE = 0.6;    // SPEC.md §5.14: iconSize = gridSize * 0.6
-const ROLE_ICON_DEFAULT = 'icons/svg/village.svg'; // placeholder icon; per-role icons are shared/icons.js's job (Task 2)
 
 export function toPixel(cell, gridSize) {
   return cell * gridSize;
@@ -50,7 +51,7 @@ export function buildWallData(wall, doorsById, gridSize) {
   };
 }
 
-export function buildNoteData(area, gridSize, pageId, journalId) {
+export function buildNoteData(area, gridSize, pageId, journalId, role) {
   return {
     entryId: journalId,
     pageId,
@@ -59,7 +60,7 @@ export function buildNoteData(area, gridSize, pageId, journalId) {
     text: area.label,
     fontSize: NOTE_FONT_SIZE,
     textAnchor: TEXT_ANCHOR_CENTER,
-    texture: { src: ROLE_ICON_DEFAULT },
+    texture: { src: iconForRole(role) },
     iconSize: Math.round(gridSize * NOTE_ICON_SCALE),
   };
 }
