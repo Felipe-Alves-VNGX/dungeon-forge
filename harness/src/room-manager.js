@@ -124,7 +124,8 @@ function renderShapeEditor() {
 function applyShapeType(type) {
   const room = dungeon.rooms.find((r) => r.id === selectedRoomId);
   if (!room) return;
-  room.shape = { type, params: defaultParamsFor(type) };
+  const effective = smallRoomWarningApplies(type, room.w, room.h) ? 'rect' : type;
+  room.shape = { type: effective, params: defaultParamsFor(effective) };
   afterShapeChange();
 }
 
@@ -140,11 +141,16 @@ function applyShapeParam(value) {
 function applySizeDelta(dim, delta) {
   const room = dungeon.rooms.find((r) => r.id === selectedRoomId);
   if (!room) return;
-  const next = Math.max(1, room[dim] + delta);
+  const max = dim === 'w' ? dungeon.width - room.x : dungeon.height - room.y;
+  const next = Math.max(1, Math.min(max, room[dim] + delta));
   if (next === room[dim]) return;
   room[dim] = next;
   room.cx = room.x + room.w / 2;
   room.cy = room.y + room.h / 2;
+  const currentType = room.shape?.type ?? 'rect';
+  if (smallRoomWarningApplies(currentType, room.w, room.h)) {
+    room.shape = { type: 'rect', params: {} };
+  }
   afterShapeChange();
 }
 
