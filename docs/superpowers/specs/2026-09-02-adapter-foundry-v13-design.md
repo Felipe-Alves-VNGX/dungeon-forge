@@ -100,9 +100,11 @@ export async function emitV13(dungeon, config) {
 
 A Region's `linkId` flag (`region.flags['dungeon-forge'].linkId = link.id`) is how `wireStairRegionBehaviors` finds the matching pair without guessing by position — set at Scene-creation time, read back after all Scenes exist.
 
-## Wall/Note/Region geometry — reusing `packages/render`'s plan, not re-deriving it
+## Wall/Note/Region geometry — reads `dungeon.walls`/`dungeon.doors` directly, not `packages/render`'s plan
 
-`packages/render`'s `buildRenderPlan(dungeon, floor, gridSize)` (already used by `harness/src/floor-editor.js`) already computes `wallLines` (`{x1,y1,x2,y2,isDoor}`, in pixels) for a floor. `shared/geometry.js`'s `buildWallData` wraps each of those into the Foundry `WallDocument` shape above — no wall math is re-derived in `adapter-foundry`, only translated field-by-field. Room shape (rect/L/cross/circle/triangle/custom) is irrelevant here: `buildRenderPlan` already resolved it into flat wall segments upstream.
+`packages/render`'s `buildRenderPlan(dungeon, floor, gridSize)` (used by `harness/src/floor-editor.js`) computes `wallLines` from `dungeon.walls`, but its `isDoor` flag deliberately **masks secret doors** (`isDoor: w.isDoor && !secret`) — correct for that module, since a baked floor-plan PNG has no per-viewer permission system and must never visually leak a secret door's location. Foundry's real `WallDocument`, by contrast, is supposed to carry the true `door: 2` (SECRET) value and let Foundry's own wall/vision system handle per-player visibility (a GM sees secret doors on their own client; players don't, until revealed) — using `buildRenderPlan`'s output here would silently flatten every secret door into a plain wall, permanently.
+
+So `adapter-foundry` reads `dungeon.walls` (`WallSegment[]`, cell-unit `x1/y1/x2/y2`, `isDoor`, `doorId`) and `dungeon.doors` (`Door[]`, has `secret: boolean` keyed by `id`) directly, filtered by `floor`, and computes the Foundry `door` value itself: `!wall.isDoor ? 0 : (doorsById.get(wall.doorId)?.secret ? 2 : 1)`. `shared/geometry.js`'s `buildWallData(wall, doorsById, gridSize)` does this translation — still no wall *math* is re-derived (positions come straight from `WallSegment.x1/y1/x2/y2 * gridSize`), only the door-type field is computed from `dungeon.doors`, correctly, once. Room shape (rect/L/cross/circle/triangle/custom) is irrelevant here either way: `dungeon.walls` is already flat wall segments, resolved upstream by `extractWalls`.
 
 ## Testing
 
