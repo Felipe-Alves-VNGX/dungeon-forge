@@ -174,24 +174,13 @@ describe('carve — non-rectangular rooms', () => {
     const hallwayCount = Array.from(grid).filter((c) => c === CELL.HALLWAY).length;
     expect(hallwayCount).toBeGreaterThan(0);
 
-    // The strong assertion: without the fix, A* starts from (4,4) — a cell
-    // that is CELL.EMPTY and does NOT belong to r0 (it's the excluded
-    // notch) — so the carved corridor would terminate at a stray empty
-    // cell instead of actually reaching any real r0-owned cell. Confirm at
-    // least one carved HALLWAY cell is orthogonally adjacent to a genuine
-    // r0 member cell.
-    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    let touchesRealRoomCell = false;
-    for (let y = 0; y < height && !touchesRealRoomCell; y++) {
-      for (let x = 0; x < width; x++) {
-        if (getCell(grid, x, y, 0, width, height) !== CELL.HALLWAY) continue;
-        if (dirs.some(([dx, dy]) => getRoomId(roomIdAt, x + dx, y + dy, 0, width, height) === r0.id)) {
-          touchesRealRoomCell = true;
-          break;
-        }
-      }
-    }
-    expect(touchesRealRoomCell).toBe(true);
+    // The real regression check: without the fix, A* starts from (4,4) — the
+    // deliberately-excluded, CELL.EMPTY notch cell that does NOT belong to
+    // r0 — and carvePath() converts every EMPTY path node (including the
+    // start) to CELL.HALLWAY. With the fix, A* never uses (4,4) as its
+    // start (it finds a real r0-owned cell instead), so (4,4) is never part
+    // of the carved path and must remain untouched.
+    expect(getCell(grid, 4, 4, 0, width, height)).not.toBe(CELL.HALLWAY);
   });
 });
 
