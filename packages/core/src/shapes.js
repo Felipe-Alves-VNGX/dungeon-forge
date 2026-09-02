@@ -125,6 +125,10 @@ export function rasterizeTriangle(room, params) {
   return cells;
 }
 
+export function rasterizeCustom(room, params) {
+  return params.cells.map(([dx, dy]) => ({ x: room.x + dx, y: room.y + dy }));
+}
+
 /**
  * @param {'rect'|'l'|'cross'|'circle'|'triangle'} type
  * @param {import('./rng.js').Rng} rng
@@ -157,6 +161,8 @@ export function rasterizeRoom(room) {
       return rasterizeCircle(room);
     case 'triangle':
       return rasterizeTriangle(room, room.shape.params);
+    case 'custom':
+      return rasterizeCustom(room, room.shape.params);
     default:
       throw new Error(`rasterizeRoom: unknown shape type "${type}"`);
   }
