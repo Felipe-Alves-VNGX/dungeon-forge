@@ -1,0 +1,10 @@
+{
+  "name": "@dungeon-forge/adapter-foundry",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "dependencies": {
+    "@dungeon-forge/core": "*"
+  }
+}
