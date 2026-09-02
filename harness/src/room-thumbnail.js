@@ -5,7 +5,7 @@
 // secret), and a compass rose. Everything lives inside one rotating <g> so
 // the compass always correctly shows which way is which after spinning —
 // a rigid transform never changes the room/compass's relative position.
-import { rasterizeRoom } from '../../packages/core/src/pipeline.js';
+import { rasterizeRoom } from '@dungeon-forge/core';
 const VIEWBOX = 180;
 const CENTER = VIEWBOX / 2;
 const MAX_ROOM_SIZE = 100;

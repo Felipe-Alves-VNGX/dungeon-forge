@@ -10,7 +10,7 @@
 // from its corridors. That's expected here; reflowing the dungeon around a
 // manual edit is future work, not part of this increment.
 import { buildRenderPlan } from '@dungeon-forge/render';
-import { rasterizeRoom } from '../../packages/core/src/shapes.js';
+import { rasterizeRoom } from '@dungeon-forge/core';
 
 export function buildFloorEditorSVG(dungeon, floor, gridSize) {
   const plan = buildRenderPlan(dungeon, floor, gridSize);
@@ -27,7 +27,7 @@ export function buildFloorEditorSVG(dungeon, floor, gridSize) {
     const cells = rasterizeRoom(room).map((cell) => {
       const x = cell.x * gridSize;
       const y = cell.y * gridSize;
-      return `<rect class="edit-room-cell role-${room.role}" x="${x}" y="${y}" width="${gridSize}" height="${gridSize}" />`;
+      return `<rect class="edit-room-cell" x="${x}" y="${y}" width="${gridSize}" height="${gridSize}" data-role="${room.role}" />`;
     }).join('');
     const labelX = (room.x + room.w / 2) * gridSize;
     const labelY = (room.y + room.h / 2) * gridSize;

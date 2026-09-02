@@ -20,7 +20,7 @@ describe('buildFloorEditorSVG', () => {
     const dungeon = generateDungeon(CONFIG);
     const svg = buildFloorEditorSVG(dungeon, 0, 20);
     const roomsOnFloor = dungeon.rooms.filter((r) => r.floor === 0);
-    const matches = svg.match(/edit-room-cell/g) ?? [];
+    const matches = svg.match(/class="edit-room-cell"/g) ?? [];
     // Every room in this config is forced non-'rect' with a real notch (sizeMin 4+),
     // so the total cell count must be strictly less than the naive bbox sum.
     expect(matches.length).toBeGreaterThan(0);
@@ -31,7 +31,7 @@ describe('buildFloorEditorSVG', () => {
     const dungeon = generateDungeon(CONFIG);
     const svg = buildFloorEditorSVG(dungeon, 0, 20);
     const roomsOnFloor = dungeon.rooms.filter((r) => r.floor === 0);
-    const groups = svg.match(/editable-room/g) ?? [];
+    const groups = svg.match(/class="editable-room"/g) ?? [];
     expect(groups).toHaveLength(roomsOnFloor.length);
   });
 });
