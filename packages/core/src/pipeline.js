@@ -179,4 +179,4 @@ export function generateDungeon(config) {
   };
 }
 
-export { keyToMarkdown, validateDungeon };
+export { keyToMarkdown, validateDungeon, rasterizeRoom };

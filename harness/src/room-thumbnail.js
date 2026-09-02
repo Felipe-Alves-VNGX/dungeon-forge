@@ -5,6 +5,7 @@
 // secret), and a compass rose. Everything lives inside one rotating <g> so
 // the compass always correctly shows which way is which after spinning —
 // a rigid transform never changes the room/compass's relative position.
+import { rasterizeRoom } from '@dungeon-forge/core';
 const VIEWBOX = 180;
 const CENTER = VIEWBOX / 2;
 const MAX_ROOM_SIZE = 100;
@@ -69,12 +70,18 @@ export function buildRoomThumbnailSVG(room, doors, rotationDeg = 0) {
   const rectH = room.h * scale;
   const rect = { x: CENTER - rectW / 2, y: CENTER - rectH / 2, w: rectW, h: rectH };
 
+  const cells = rasterizeRoom(room).map((cell) => {
+    const dx = cell.x - room.x;
+    const dy = cell.y - room.y;
+    return `<rect class="room-cell" x="${(rect.x + dx * scale).toFixed(1)}" y="${(rect.y + dy * scale).toFixed(1)}" width="${scale.toFixed(1)}" height="${scale.toFixed(1)}" />`;
+  }).join('');
+
   const roomDoors = doors.filter((d) => room.doors.includes(d.id));
   const ticks = roomDoors.map((d) => doorTick(d, room, rect)).join('');
 
   return `<svg class="room-thumb" viewBox="0 0 ${VIEWBOX} ${VIEWBOX}" xmlns="http://www.w3.org/2000/svg">
     <g transform="rotate(${rotationDeg}, ${CENTER}, ${CENTER})">
-      <rect class="room-rect" x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.w.toFixed(1)}" height="${rect.h.toFixed(1)}" rx="2" />
+      ${cells}
       ${ticks}
       ${compassRose()}
     </g>

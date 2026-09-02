@@ -28,7 +28,7 @@
       .region-floors { color: #888; font-size: 0.78rem; }
 
       .room-thumb { width: 220px; height: 220px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; display: block; }
-      .room-rect { fill: #333; stroke: #999; stroke-width: 2; }
+      .room-cell { fill: #333; stroke: #999; stroke-width: 1; }
       .door-tick { fill: #c8963e; }
       .door-tick-secret { fill: #7a5c9e; stroke: #c8963e; stroke-width: 1; stroke-dasharray: 2 1; }
       .compass-ring { fill: none; stroke: #666; stroke-width: 1; }
@@ -54,19 +54,19 @@
       .edit-door { stroke: #c8963e; }
       .editable-room { cursor: grab; }
       .editable-room.dragging { cursor: grabbing; }
-      .edit-room-rect { fill: #2a3a2a; stroke: #6a8a6a; stroke-width: 1.5; }
-      .editable-room.dragging .edit-room-rect { fill: #3a4a3a; stroke: #9fd; }
+      .edit-room-cell { fill: #2a3a2a; stroke: #6a8a6a; stroke-width: 1.5; }
+      .editable-room.dragging .edit-room-cell { fill: #3a4a3a; stroke: #9fd; }
       .edit-room-label { font-size: 11px; fill: #cde; pointer-events: none; user-select: none; }
 
-      #cell-editor-note { font-size: 0.78rem; color: #a08050; margin: 0.5rem 0; max-width: 32rem; }
-      #cell-editor { max-width: 100%; overflow: auto; border: 1px solid #444; background: #161616; margin-bottom: 0.5rem; }
-      .cell-editor-svg { display: block; max-width: 100%; height: auto; }
-      .grid-cell { fill: #1e1e1e; stroke: #333; stroke-width: 1; cursor: pointer; }
-      .grid-cell:hover { fill: #2a2a2a; }
-      .grid-cell-on { fill: #2a3a2a; }
-      .grid-cell-on:hover { fill: #35483a; }
-      .grid-applied-rect { fill: none; stroke: #c8963e; stroke-width: 2; stroke-dasharray: 4 2; pointer-events: none; }
-      #cell-editor-reset { margin-bottom: 1rem; }
+      #shape-editor-controls { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.5rem; font-size: 0.85rem; }
+      #shape-editor-controls select { background: #1a1a1a; color: #eee; border: 1px solid #444; padding: 0.2rem; }
+      .shape-size-row { display: flex; align-items: center; gap: 0.4rem; }
+      .shape-size-row button { width: 1.6rem; height: 1.6rem; cursor: pointer; }
+      #shape-warning { font-size: 0.78rem; color: #a08050; max-width: 32rem; }
+      #shape-editor { max-width: 100%; overflow: auto; border: 1px solid #444; background: #161616; margin-bottom: 0.5rem; }
+      .shape-editor-svg { display: block; max-width: 100%; height: auto; }
+      .shape-editor-bg { fill: #1e1e1e; stroke: #333; stroke-width: 1; }
+      .shape-cell-on { fill: #2a3a2a; stroke: #35483a; stroke-width: 1; }
     </style>
   </head>
   <body>
@@ -101,10 +101,30 @@
         <div id="room-exits"></div>
         <textarea id="room-annotation" placeholder="Anotações do mestre (não salvas)..."></textarea>
 
-        <h2>Editor de células (protótipo)</h2>
-        <p id="cell-editor-note">Protótipo: clique nas células para esboçar uma forma futura. O core só entende salas retangulares hoje, então apenas o retângulo delimitador (contorno tracejado) das células marcadas é aplicado à sala.</p>
-        <div id="cell-editor"></div>
-        <button id="cell-editor-reset" type="button">Resetar seleção</button>
+        <h2>Forma da sala</h2>
+        <div id="shape-editor-controls">
+          <label>Tipo
+            <select id="shape-type"></select>
+          </label>
+          <label id="shape-param-row" hidden>
+            <span id="shape-param-label"></span>
+            <select id="shape-param"></select>
+          </label>
+          <div class="shape-size-row">
+            <span>Largura</span>
+            <button id="shape-w-minus" type="button">-</button>
+            <span id="shape-w-value"></span>
+            <button id="shape-w-plus" type="button">+</button>
+          </div>
+          <div class="shape-size-row">
+            <span>Altura</span>
+            <button id="shape-h-minus" type="button">-</button>
+            <span id="shape-h-value"></span>
+            <button id="shape-h-plus" type="button">+</button>
+          </div>
+        </div>
+        <p id="shape-warning" class="empty" hidden></p>
+        <div id="shape-editor"></div>
       </div>
     </section>
 

@@ -6,10 +6,10 @@
 // rotatable thumbnail, real exits, and an in-memory (unsaved) annotation.
 import { buildRoomThumbnailSVG } from './room-thumbnail.js';
 import { buildFloorEditorSVG, wireFloorEditorDrag } from './floor-editor.js';
-import { rectToCellSet, cellSetToBoundingRect, buildCellGridSVG, wireCellGridToggle } from './cell-editor.js';
+import { SHAPE_TYPES, defaultParamsFor, smallRoomWarningApplies, buildShapeEditorSVG } from './shape-editor.js';
 
 const FLOOR_EDITOR_GRID_SIZE = 24;
-const CELL_EDITOR_GRID_SIZE = 24;
+const SHAPE_EDITOR_GRID_SIZE = 24;
 
 const ROLE_LABEL = {
   entrance: 'Entrada',
@@ -25,7 +25,6 @@ let dungeon = null;
 let selectedRoomId = null;
 let rotationDeg = 0;
 const annotations = new Map(); // roomId -> string, in-memory only, resets on reload
-const cellSelections = new Map(); // roomId -> Set<"x,y">, in-memory only, resets on reload
 
 function el(id) {
   return document.getElementById(id);
@@ -39,7 +38,13 @@ export function initRoomManager() {
   el('room-annotation').addEventListener('input', (event) => {
     if (selectedRoomId != null) annotations.set(selectedRoomId, event.target.value);
   });
-  el('cell-editor-reset').addEventListener('click', resetCellSelection);
+  populateShapeTypeSelect();
+  el('shape-type').addEventListener('change', (e) => applyShapeType(e.target.value));
+  el('shape-param').addEventListener('change', (e) => applyShapeParam(e.target.value));
+  el('shape-w-minus').addEventListener('click', () => applySizeDelta('w', -1));
+  el('shape-w-plus').addEventListener('click', () => applySizeDelta('w', 1));
+  el('shape-h-minus').addEventListener('click', () => applySizeDelta('h', -1));
+  el('shape-h-plus').addEventListener('click', () => applySizeDelta('h', 1));
 }
 
 export function setDungeon(nextDungeon) {
@@ -51,7 +56,7 @@ export function setDungeon(nextDungeon) {
   renderRegionsList();
   renderDetail();
   renderFloorEditor();
-  renderCellEditor();
+  renderShapeEditor();
 }
 
 function selectRoom(roomId) {
@@ -61,7 +66,7 @@ function selectRoom(roomId) {
   renderRoomList();
   renderDetail();
   renderFloorEditor();
-  renderCellEditor();
+  renderShapeEditor();
 }
 
 function renderFloorEditor() {
@@ -76,47 +81,83 @@ function renderFloorEditor() {
   wireFloorEditorDrag(container, dungeon, FLOOR_EDITOR_GRID_SIZE, () => {});
 }
 
-function getCellSelection(room) {
-  if (!cellSelections.has(room.id)) {
-    cellSelections.set(room.id, rectToCellSet(room));
-  }
-  return cellSelections.get(room.id);
+function populateShapeTypeSelect() {
+  el('shape-type').innerHTML = SHAPE_TYPES.map((s) => `<option value="${s.type}">${s.label}</option>`).join('');
 }
 
-function renderCellEditor() {
-  const container = el('cell-editor');
+function renderShapeEditor() {
   const room = dungeon.rooms.find((r) => r.id === selectedRoomId);
+  const editorEl = el('shape-editor');
   if (!room) {
-    container.innerHTML = '';
+    editorEl.innerHTML = '';
     return;
   }
-  const cellSet = getCellSelection(room);
-  container.innerHTML = buildCellGridSVG(room, cellSet, dungeon, CELL_EDITOR_GRID_SIZE);
-  wireCellGridToggle(container, cellSet, () => applyCellSelection(room, cellSet));
+
+  const type = room.shape?.type ?? 'rect';
+  const def = SHAPE_TYPES.find((s) => s.type === type);
+  el('shape-type').value = type;
+
+  const paramRow = el('shape-param-row');
+  if (def.param) {
+    paramRow.hidden = false;
+    el('shape-param-label').textContent = def.param.label;
+    el('shape-param').innerHTML = def.param.options.map((o) => `<option value="${o.value}">${o.label}</option>`).join('');
+    el('shape-param').value = room.shape?.params?.[def.param.key] ?? def.param.options[0].value;
+  } else {
+    paramRow.hidden = true;
+  }
+
+  el('shape-w-value').textContent = room.w;
+  el('shape-h-value').textContent = room.h;
+
+  const warning = el('shape-warning');
+  if (smallRoomWarningApplies(type, room.w, room.h)) {
+    warning.hidden = false;
+    warning.textContent = `Formas L/cruz/círculo/triângulo exigem lado >= 4; esta sala (${room.w}x${room.h}) vira retângulo.`;
+  } else {
+    warning.hidden = true;
+  }
+
+  editorEl.innerHTML = buildShapeEditorSVG(room, dungeon, SHAPE_EDITOR_GRID_SIZE);
 }
 
-// Toggling cells never touches room.x/y/w/h directly — only the toggled
-// set's bounding rectangle does, since that's the only shape the core model
-// understands today. See cell-editor.js.
-function applyCellSelection(room, cellSet) {
-  const rect = cellSetToBoundingRect(cellSet);
-  if (!rect) return;
-  room.x = rect.x;
-  room.y = rect.y;
-  room.w = rect.w;
-  room.h = rect.h;
-  room.cx = room.x + room.w / 2;
-  room.cy = room.y + room.h / 2;
-  renderCellEditor();
-  renderDetail();
-  renderFloorEditor();
-}
-
-function resetCellSelection() {
+function applyShapeType(type) {
   const room = dungeon.rooms.find((r) => r.id === selectedRoomId);
   if (!room) return;
-  cellSelections.set(room.id, rectToCellSet(room));
-  renderCellEditor();
+  const effective = smallRoomWarningApplies(type, room.w, room.h) ? 'rect' : type;
+  room.shape = { type: effective, params: defaultParamsFor(effective) };
+  afterShapeChange();
+}
+
+function applyShapeParam(value) {
+  const room = dungeon.rooms.find((r) => r.id === selectedRoomId);
+  if (!room?.shape) return;
+  const def = SHAPE_TYPES.find((s) => s.type === room.shape.type);
+  if (!def?.param) return;
+  room.shape = { type: room.shape.type, params: { [def.param.key]: value } };
+  afterShapeChange();
+}
+
+function applySizeDelta(dim, delta) {
+  const room = dungeon.rooms.find((r) => r.id === selectedRoomId);
+  if (!room) return;
+  const max = dim === 'w' ? dungeon.width - room.x : dungeon.height - room.y;
+  const next = Math.max(1, Math.min(max, room[dim] + delta));
+  if (next === room[dim]) return;
+  room[dim] = next;
+  room.cx = room.x + room.w / 2;
+  room.cy = room.y + room.h / 2;
+  const currentType = room.shape?.type ?? 'rect';
+  if (smallRoomWarningApplies(currentType, room.w, room.h)) {
+    room.shape = { type: 'rect', params: {} };
+  }
+  afterShapeChange();
+}
+
+function afterShapeChange() {
+  renderShapeEditor();
+  renderDetail();
+  renderFloorEditor();
 }
 
 function renderRoomList() {
