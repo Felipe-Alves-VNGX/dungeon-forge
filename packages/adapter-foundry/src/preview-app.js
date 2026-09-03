@@ -92,10 +92,15 @@ export class DungeonForgePreviewApp extends HandlebarsApplicationMixin(Applicati
 
   static async #onEditRooms() {
     const { DungeonForgeRoomEditorApp } = await import('./room-editor-app.js');
-    new DungeonForgeRoomEditorApp({
+    if (this.roomEditorApp && this.roomEditorApp.rendered) {
+      this.roomEditorApp.bringToFront();
+      return;
+    }
+    this.roomEditorApp = new DungeonForgeRoomEditorApp({
       dungeon: this.dungeon,
       onClose: () => this.render(),
-    }).render(true);
+    });
+    this.roomEditorApp.render(true);
   }
 
   static async #onCreate() {

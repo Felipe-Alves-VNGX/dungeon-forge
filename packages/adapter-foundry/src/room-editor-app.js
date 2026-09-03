@@ -73,7 +73,7 @@ export class DungeonForgeRoomEditorApp extends HandlebarsApplicationMixin(Applic
       if (interactive) {
         wireShapeEditorToggle(container, (x, y) => {
           applyCustomToggle(room, x, y);
-          this.render();
+          this.render().catch((error) => console.error('Dungeon Forge: room editor re-render failed', error));
         });
       }
     }
@@ -91,8 +91,9 @@ export class DungeonForgeRoomEditorApp extends HandlebarsApplicationMixin(Applic
   }
 
   async close(options) {
+    const result = await super.close(options);
     this.onClose?.();
-    return super.close(options);
+    return result;
   }
 
   static async #onSelectRoom(event, target) {
@@ -101,14 +102,14 @@ export class DungeonForgeRoomEditorApp extends HandlebarsApplicationMixin(Applic
   }
 
   static async #onResizeW(event, target) {
-    const room = this.dungeon.rooms.find((r) => r.id === this.selectedRoomId);
+    const room = this.#selectedRoom();
     if (!room) return;
     applySizeDelta(room, this.dungeon, 'w', Number(target.dataset.delta));
     await this.render();
   }
 
   static async #onResizeH(event, target) {
-    const room = this.dungeon.rooms.find((r) => r.id === this.selectedRoomId);
+    const room = this.#selectedRoom();
     if (!room) return;
     applySizeDelta(room, this.dungeon, 'h', Number(target.dataset.delta));
     await this.render();

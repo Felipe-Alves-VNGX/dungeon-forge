@@ -2987,7 +2987,7 @@ var init_room_editor_app = __esm({
           if (interactive) {
             wireShapeEditorToggle(container, (x, y) => {
               applyCustomToggle(room, x, y);
-              this.render();
+              this.render().catch((error) => console.error("Dungeon Forge: room editor re-render failed", error));
             });
           }
         }
@@ -3003,21 +3003,22 @@ var init_room_editor_app = __esm({
         await this.render();
       }
       async close(options) {
+        const result = await super.close(options);
         this.onClose?.();
-        return super.close(options);
+        return result;
       }
       static async #onSelectRoom(event, target) {
         this.selectedRoomId = Number(target.dataset.roomId);
         await this.render();
       }
       static async #onResizeW(event, target) {
-        const room = this.dungeon.rooms.find((r) => r.id === this.selectedRoomId);
+        const room = this.#selectedRoom();
         if (!room) return;
         applySizeDelta(room, this.dungeon, "w", Number(target.dataset.delta));
         await this.render();
       }
       static async #onResizeH(event, target) {
-        const room = this.dungeon.rooms.find((r) => r.id === this.selectedRoomId);
+        const room = this.#selectedRoom();
         if (!room) return;
         applySizeDelta(room, this.dungeon, "h", Number(target.dataset.delta));
         await this.render();
@@ -3111,10 +3112,15 @@ var init_preview_app = __esm({
       }
       static async #onEditRooms() {
         const { DungeonForgeRoomEditorApp: DungeonForgeRoomEditorApp2 } = await Promise.resolve().then(() => (init_room_editor_app(), room_editor_app_exports));
-        new DungeonForgeRoomEditorApp2({
+        if (this.roomEditorApp && this.roomEditorApp.rendered) {
+          this.roomEditorApp.bringToFront();
+          return;
+        }
+        this.roomEditorApp = new DungeonForgeRoomEditorApp2({
           dungeon: this.dungeon,
           onClose: () => this.render()
-        }).render(true);
+        });
+        this.roomEditorApp.render(true);
       }
       static async #onCreate() {
         try {
