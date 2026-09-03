@@ -69,7 +69,10 @@ export class DungeonForgePreviewApp extends HandlebarsApplicationMixin(Applicati
   }
 
   async close(options) {
-    if (this.imageUrl) URL.revokeObjectURL(this.imageUrl);
+    if (this.imageUrl) {
+      URL.revokeObjectURL(this.imageUrl);
+      this.imageUrl = null;
+    }
     return super.close(options);
   }
 
@@ -95,8 +98,13 @@ export class DungeonForgePreviewApp extends HandlebarsApplicationMixin(Applicati
   }
 
   static async #onCreate() {
-    const result = await emitV13(this.dungeon, this.config);
-    ui.notifications.info(`Dungeon Forge: criado "${result.journal.name}" com ${result.scenes.length} Scene(s).`);
-    await this.close();
+    try {
+      const result = await emitV13(this.dungeon, this.config);
+      ui.notifications.info(`Dungeon Forge: criado "${result.journal.name}" com ${result.scenes.length} Scene(s).`);
+      await this.close();
+    } catch (error) {
+      ui.notifications.error(`Dungeon Forge: falha ao criar a masmorra — ${error.message}`);
+      console.error('Dungeon Forge: emitV13 failed', error);
+    }
   }
 }

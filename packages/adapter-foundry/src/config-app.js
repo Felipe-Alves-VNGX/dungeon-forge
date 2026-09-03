@@ -17,7 +17,6 @@ export class DungeonForgeConfigApp extends HandlebarsApplicationMixin(Applicatio
     window: { title: 'Gerar Masmorra', resizable: true },
     position: { width: 520, height: 480 },
     form: { handler: DungeonForgeConfigApp.#onSubmit, submitOnChange: false, closeOnSubmit: false },
-    actions: {},
   };
 
   static PARTS = {
@@ -27,6 +26,7 @@ export class DungeonForgeConfigApp extends HandlebarsApplicationMixin(Applicatio
     corridors: { template: 'modules/dungeon-forge/templates/config-corridors.hbs' },
     stairs: { template: 'modules/dungeon-forge/templates/config-stairs.hbs' },
     key: { template: 'modules/dungeon-forge/templates/config-key.hbs' },
+    footer: { template: 'modules/dungeon-forge/templates/config-footer.hbs' },
   };
 
   static TABS = {

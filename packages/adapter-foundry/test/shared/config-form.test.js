@@ -86,6 +86,28 @@ describe('formDataFromConfig', () => {
   });
 });
 
+describe('configFromFormData with flat (Foundry FormDataExtended-shaped) input', () => {
+  it('expands dot-keyed flat fields into the nested Config shape', () => {
+    const flatFormObject = {
+      seed: 'flat-seed', floors: 2, width: 30, height: 30, gridSize: 100,
+      'rooms.count': 7, 'rooms.sizeMean': 6, 'rooms.sizeStdDev': 2,
+      'rooms.sizeMin': 3, 'rooms.sizeMax': 10, 'rooms.spawnRadius': 12, 'rooms.separationIters': 40,
+      'shapeWeight.rect': 1, 'shapeWeight.l': 0, 'shapeWeight.cross': 0, 'shapeWeight.circle': 0, 'shapeWeight.triangle': 0,
+      cycleRate: 0.2,
+      'carve.newHallway': 10, 'carve.reuseHallway': 1, 'carve.throughRoom': 50, 'carve.turn': 2,
+      pruneIterations: 5,
+      verticalLinksPerGap: 1,
+      'key.scheme': 'flat', 'key.numberJunctions': true, 'key.startAt': 1, 'key.padTo': 2, 'key.exitsInEntries': false,
+    };
+    const config = configFromFormData(flatFormObject);
+    expect(config.seed).toBe('flat-seed');
+    expect(config.rooms.count).toBe(7);
+    expect(config.carve.turn).toBe(2);
+    expect(config.key.scheme).toBe('flat');
+    expect(config.rooms.shapes).toEqual([{ type: 'rect', weight: 1 }]);
+  });
+});
+
 describe('nextRerollSeed', () => {
   it('is deterministic for the same seed and reroll count', () => {
     expect(nextRerollSeed('base', 1)).toBe(nextRerollSeed('base', 1));

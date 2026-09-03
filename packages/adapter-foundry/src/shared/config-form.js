@@ -45,14 +45,36 @@ function shapesFromWeights(weights) {
 
 function weightsFromShapes(shapes) {
   const weights = Object.fromEntries(SHAPE_WEIGHT_TYPES.map((type) => [type, 0]));
-  for (const entry of shapes ?? DEFAULT_CONFIG.rooms.shapes) {
+  const source = (shapes && shapes.length > 0) ? shapes : DEFAULT_CONFIG.rooms.shapes;
+  for (const entry of source) {
     weights[entry.type] = entry.weight;
   }
   return weights;
 }
 
-/** @param {Object} formObject — flat/nested object matching this module's field names (e.g. Foundry's `FormDataExtended#object`) */
-export function configFromFormData(formObject) {
+// Foundry's FormDataExtended#object delivers a FLAT object with dot-keyed
+// property names (e.g. "rooms.count", "carve.turn") for nested form field
+// names, not a nested object. This expands that shape into the nested
+// object configFromFormData expects — idempotent on already-nested input
+// (a key with no "." in it is copied through unchanged), so it's safe to
+// always call, regardless of what shape the caller passes.
+function expandFlat(obj) {
+  const result = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const parts = key.split('.');
+    let cursor = result;
+    for (let i = 0; i < parts.length - 1; i++) {
+      cursor[parts[i]] ??= {};
+      cursor = cursor[parts[i]];
+    }
+    cursor[parts.at(-1)] = value;
+  }
+  return result;
+}
+
+/** @param {Object} rawFormObject — flat/nested object matching this module's field names (e.g. Foundry's `FormDataExtended#object`) */
+export function configFromFormData(rawFormObject) {
+  const formObject = expandFlat(rawFormObject);
   return {
     target: 'v13',
     seed: formObject.seed || DEFAULT_CONFIG.seed,
