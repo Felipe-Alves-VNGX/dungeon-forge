@@ -34,4 +34,14 @@ describe('DungeonForgeConfigApp', () => {
     const context = await app._prepareContext();
     expect(context.shapeWeightTypes).toEqual(SHAPE_WEIGHT_TYPES);
   });
+
+  it('marks the initial tab (general) active when tabGroups is not yet set', async () => {
+    const app = new DungeonForgeConfigApp();
+    const context = await app._prepareContext();
+    expect(context.tabs.general.active).toBe(true);
+    expect(context.tabs.general.cssClass).toBe('active');
+    expect(context.tabs.rooms.active).toBe(false);
+    expect(context.tabs.rooms.cssClass).toBe('');
+    expect(Object.keys(context.tabs)).toEqual(['general', 'rooms', 'corridors', 'stairs', 'key']);
+  });
 });

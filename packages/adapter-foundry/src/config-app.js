@@ -48,7 +48,15 @@ export class DungeonForgeConfigApp extends HandlebarsApplicationMixin(Applicatio
   }
 
   async _prepareContext() {
+    const activeTabId = this.tabGroups?.sheet ?? this.constructor.TABS.sheet.initial;
+    const tabs = Object.fromEntries(
+      this.constructor.TABS.sheet.tabs.map((tab) => {
+        const active = tab.id === activeTabId;
+        return [tab.id, { ...tab, active, cssClass: active ? 'active' : '' }];
+      })
+    );
     return {
+      tabs,
       formData: formDataFromConfig(this.config),
       shapeWeightTypes: SHAPE_WEIGHT_TYPES,
     };
