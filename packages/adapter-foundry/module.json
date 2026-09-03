@@ -1,0 +1,12 @@
+{
+  "id": "dungeon-forge",
+  "title": "Dungeon Forge",
+  "description": "Procedurally generates multi-floor dungeons directly into Foundry VTT — Scenes, walls, key JournalEntry, and teleporting stairs.",
+  "version": "0.0.1",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "esmodules": ["dist/index.js"],
+  "authors": []
+}
