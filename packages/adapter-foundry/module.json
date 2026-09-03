@@ -2,11 +2,17 @@
   "id": "dungeon-forge",
   "title": "Dungeon Forge",
   "description": "Procedurally generates multi-floor dungeons directly into Foundry VTT — Scenes, walls, key JournalEntry, and teleporting stairs.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
   },
   "esmodules": ["dist/index.js"],
-  "authors": []
+  "authors": [],
+  "url": "https://github.com/Felipe-Alves-VNGX/dungeon-forge",
+  "manifest": "https://github.com/Felipe-Alves-VNGX/dungeon-forge/releases/latest/download/module.json",
+  "download": "https://github.com/Felipe-Alves-VNGX/dungeon-forge/releases/download/v0.1.0/dungeon-forge.zip",
+  "readme": "https://github.com/Felipe-Alves-VNGX/dungeon-forge/blob/main/packages/adapter-foundry/README.md",
+  "bugs": "https://github.com/Felipe-Alves-VNGX/dungeon-forge/issues",
+  "license": "https://github.com/Felipe-Alves-VNGX/dungeon-forge/blob/main/LICENSE"
 }
