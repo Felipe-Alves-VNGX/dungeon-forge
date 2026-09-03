@@ -1,0 +1,20 @@
+/* packages/adapter-foundry/styles/room-editor.css
+ *
+ * Ported from harness/index.html's shape-editor styling — this CSS was
+ * deliberately NOT extracted alongside the JS in Sub-project A (only pure
+ * logic went into packages/room-shape-ui), so it's duplicated here rather
+ * than shared, matching what the Sub-project A final review flagged and
+ * scoped as a follow-up, not a blocker. */
+#shape-editor-controls { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.5rem; font-size: 0.85rem; }
+.shape-size-row { display: flex; align-items: center; gap: 0.4rem; }
+.shape-size-row button { width: 1.6rem; height: 1.6rem; cursor: pointer; }
+.shape-warning { font-size: 0.78rem; color: #a08050; max-width: 32rem; }
+.shape-editor-svg { display: block; max-width: 100%; height: auto; }
+.shape-editor-bg { fill: #1e1e1e; stroke: #333; stroke-width: 1; }
+.shape-cell-on { fill: #2a3a2a; stroke: #35483a; stroke-width: 1; }
+.shape-cell { fill: #1e1e1e; stroke: #333; stroke-width: 1; cursor: pointer; }
+.shape-cell:hover { fill: #2a2a2a; }
+.shape-cell.shape-cell-on { fill: #2a3a2a; stroke: #35483a; }
+.shape-cell.shape-cell-on:hover { fill: #35483a; }
+.room-editor-list .room-item { cursor: pointer; padding: 0.15rem 0.3rem; }
+.room-editor-list .room-item.active { background: #2a3a2a; }

@@ -1,0 +1,41 @@
+<div class="room-editor-detail">
+  {{#if detail}}
+    <div id="shape-editor-controls">
+      <label>Tipo
+        <select data-shape-type-select>
+          {{#each detail.shapeTypes}}
+            <option value="{{this.type}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+      </label>
+      {{#if detail.hasParam}}
+        <label>
+          <span>{{detail.paramLabel}}</span>
+          <select data-shape-param-select>
+            {{#each detail.paramOptions}}
+              <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+            {{/each}}
+          </select>
+        </label>
+      {{/if}}
+      <div class="shape-size-row">
+        <span>Largura</span>
+        <button type="button" data-action="resizeW" data-delta="-1" {{#if detail.sizeSteppersDisabled}}disabled{{/if}}>-</button>
+        <span>{{detail.w}}</span>
+        <button type="button" data-action="resizeW" data-delta="1" {{#if detail.sizeSteppersDisabled}}disabled{{/if}}>+</button>
+      </div>
+      <div class="shape-size-row">
+        <span>Altura</span>
+        <button type="button" data-action="resizeH" data-delta="-1" {{#if detail.sizeSteppersDisabled}}disabled{{/if}}>-</button>
+        <span>{{detail.h}}</span>
+        <button type="button" data-action="resizeH" data-delta="1" {{#if detail.sizeSteppersDisabled}}disabled{{/if}}>+</button>
+      </div>
+    </div>
+    {{#if detail.warning}}
+      <p class="shape-warning">{{detail.warning}}</p>
+    {{/if}}
+    <div data-shape-editor></div>
+  {{else}}
+    <p class="empty">Selecione uma sala.</p>
+  {{/if}}
+</div>

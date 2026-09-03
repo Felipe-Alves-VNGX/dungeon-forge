@@ -28,3 +28,19 @@ folder, matching `module.json`'s `id`:
 ln -s "$(pwd)/packages/adapter-foundry" <foundry-data>/Data/modules/dungeon-forge
 ```
 No other symlink is needed — the bundle is self-contained.
+
+## Credits
+
+The GM-facing config form + preview flow (`DungeonForgeConfigApp` /
+`DungeonForgePreviewApp`) was designed after researching these existing
+Foundry modules/systems:
+
+- **[DunGen](https://github.com/mouse0270/foundryvtt-dungen)** (MIT
+  license, by mouse0270) — the "generate → preview → Create Scene" flow:
+  nothing is created in Foundry until the GM explicitly commits to a
+  result they've already seen.
+- **[Dungeon Crawl Classics (DCC) system](https://github.com/foundryvtt-dcc/dcc)**
+  — its documented `ApplicationV2` + `HandlebarsApplicationMixin`
+  reference (`docs/dev/V13.md`) is the technical pattern this module's
+  tabbed form follows: `DEFAULT_OPTIONS`/`PARTS`/`TABS` static fields, the
+  `data-action` handler-mapping convention, and one `PART` per tab.
