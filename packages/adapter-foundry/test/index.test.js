@@ -12,10 +12,11 @@ describe('generate', () => {
 describe('module init (Node import safety)', () => {
   it('imports src/index.js without touching foundry.applications.api at module scope', async () => {
     // If index.js ever imports config-app.js statically at the top level
-    // instead of dynamically inside Hooks.once, this import itself throws
-    // here (foundry.applications.api doesn't exist in plain Node) — see
-    // this package's ./helpers/foundry-stub.js and preview-app.js/config-app.js
-    // for why those two files must guard the same way.
+    // instead of dynamically inside the "Gerar Masmorra" button's click
+    // handler, this import itself throws here (foundry.applications.api
+    // doesn't exist in plain Node) — see this package's
+    // ./helpers/foundry-stub.js and preview-app.js/config-app.js for why
+    // those two files must guard the same way.
     await expect(import('../src/index.js')).resolves.toBeDefined();
   });
 });

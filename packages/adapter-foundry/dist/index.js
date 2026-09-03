@@ -3216,16 +3216,22 @@ async function generate(config) {
   return emitV13(dungeon, config);
 }
 if (typeof Hooks !== "undefined") {
-  Hooks.once("init", async () => {
+  Hooks.once("init", () => {
     game.modules.get("dungeon-forge").api = { generate };
-    const { DungeonForgeConfigApp: DungeonForgeConfigApp2 } = await Promise.resolve().then(() => (init_config_app(), config_app_exports));
-    game.settings.registerMenu("dungeon-forge", "generate", {
-      name: "Gerar Masmorra",
-      label: "Abrir",
-      icon: "fas fa-dungeon",
-      type: DungeonForgeConfigApp2,
-      restricted: true
+  });
+  Hooks.on("renderSceneDirectory", (app, html) => {
+    if (!game.user.isGM) return;
+    const actions = html.querySelector(".header-actions.action-buttons");
+    if (!actions || actions.querySelector(".dungeon-forge-generate")) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "dungeon-forge-generate";
+    button.innerHTML = '<i class="fas fa-dungeon"></i><span>Gerar Masmorra</span>';
+    button.addEventListener("click", async () => {
+      const { DungeonForgeConfigApp: DungeonForgeConfigApp2 } = await Promise.resolve().then(() => (init_config_app(), config_app_exports));
+      new DungeonForgeConfigApp2().render(true);
     });
+    actions.appendChild(button);
   });
 }
 export {
