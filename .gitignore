@@ -2,3 +2,4 @@ node_modules/
 dist/
 !packages/adapter-foundry/dist/
 !packages/adapter-foundry/dist/**
+.superpowers/brainstorm/
