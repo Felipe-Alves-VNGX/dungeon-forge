@@ -1,6 +1,6 @@
 // packages/adapter-foundry/test/shared/geometry.test.js
 import { describe, it, expect } from 'vitest';
-import { toPixel, buildWallData, buildNoteData } from '../../src/shared/geometry.js';
+import { toPixel, buildWallData, buildNoteData, buildStairNoteData } from '../../src/shared/geometry.js';
 import { iconForRole } from '../../src/shared/icons.js';
 
 describe('toPixel', () => {
@@ -53,5 +53,25 @@ describe('buildNoteData', () => {
       texture: { src: iconForRole('treasure') },
       iconSize: 60,
     });
+  });
+});
+
+describe('buildStairNoteData', () => {
+  it('builds a Note pointing down to the destination area on the fromFloor side', () => {
+    const link = { id: 0, fromFloor: 0, toFloor: 1, x: 5, y: 5, w: 2, h: 1, kind: 'stair', roomIdFrom: 0, roomIdTo: 1 };
+    const destinationArea = { id: 1, label: '2-01', floor: 1, roomId: 1, cx: 8, cy: 8, exits: [] };
+    const data = buildStairNoteData(link, 0, destinationArea, 100, 'page-1', 'journal-1');
+    expect(data.text).toBe('↓ 2-01');
+    expect(data.x).toBe(600); // (5 + 2/2) * 100
+    expect(data.y).toBe(550); // (5 + 1/2) * 100
+    expect(data.pageId).toBe('page-1');
+    expect(data.entryId).toBe('journal-1');
+  });
+
+  it('builds a Note pointing up to the destination area on the toFloor side', () => {
+    const link = { id: 0, fromFloor: 0, toFloor: 1, x: 5, y: 5, w: 2, h: 1, kind: 'stair', roomIdFrom: 0, roomIdTo: 1 };
+    const destinationArea = { id: 0, label: '1-01', floor: 0, roomId: 0, cx: 6, cy: 6, exits: [] };
+    const data = buildStairNoteData(link, 1, destinationArea, 100, 'page-0', 'journal-1');
+    expect(data.text).toBe('↑ 1-01');
   });
 });

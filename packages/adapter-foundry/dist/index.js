@@ -2157,6 +2157,22 @@ function buildNoteData(area, gridSize, pageId, journalId, role) {
     iconSize: Math.round(gridSize * NOTE_ICON_SCALE)
   };
 }
+var STAIR_ICON = "icons/svg/upgrade.svg";
+function buildStairNoteData(link, floor, destinationArea, gridSize, pageId, journalId) {
+  const goingDown = floor === link.fromFloor;
+  const arrow = goingDown ? "\u2193" : "\u2191";
+  return {
+    entryId: journalId,
+    pageId,
+    x: toPixel(link.x + link.w / 2, gridSize),
+    y: toPixel(link.y + link.h / 2, gridSize),
+    text: `${arrow} ${destinationArea.label}`,
+    fontSize: NOTE_FONT_SIZE,
+    textAnchor: TEXT_ANCHOR_CENTER,
+    texture: { src: STAIR_ICON },
+    iconSize: Math.round(gridSize * NOTE_ICON_SCALE)
+  };
+}
 
 // src/shared/key-journal.js
 var JOURNAL_FORMAT_HTML = 1;
@@ -2204,6 +2220,15 @@ function mapAreaPagesById(journal, dungeon) {
 }
 
 // src/v13.js
+async function bestEffortDelete(docs) {
+  await Promise.all(docs.map(async (doc) => {
+    try {
+      await doc.delete();
+    } catch (deleteErr) {
+      console.error("adapter-foundry: rollback delete failed", deleteErr);
+    }
+  }));
+}
 function sceneNameForFloor(dungeon, floor, config) {
   return `${config.seed} \u2014 Andar ${floor + 1}`;
 }
@@ -2234,20 +2259,27 @@ async function createFloorScenes(dungeon, config, pageIdByAreaId, journalId) {
         shapes: [regionShapeForLink(link, gridSize)],
         flags: { "dungeon-forge": { linkId: link.id } }
       }));
+      const stairNotes = dungeon.links.filter((link) => link.fromFloor === floor || link.toFloor === floor).map((link) => {
+        const destinationRoomId = floor === link.fromFloor ? link.roomIdTo : link.roomIdFrom;
+        const destinationArea = dungeon.areas.find((a) => a.roomId === destinationRoomId);
+        const pageId = pageIdByAreaId.get(destinationArea.id);
+        return buildStairNoteData(link, floor, destinationArea, gridSize, pageId, journalId);
+      });
       const scene = await Scene.create({
         name: sceneNameForFloor(dungeon, floor, config),
         width: dungeon.width * gridSize,
         height: dungeon.height * gridSize,
         grid: { size: gridSize, type: 1 },
         background: { src: null },
+        padding: 0,
         walls,
-        notes,
+        notes: [...notes, ...stairNotes],
         regions
       });
       scenes.push(scene);
     }
   } catch (err) {
-    await Promise.all(scenes.map((s) => s.delete()));
+    await bestEffortDelete(scenes);
     throw err;
   }
   return scenes;
@@ -2281,12 +2313,16 @@ async function emitV13(dungeon, config) {
     try {
       await wireStairRegionBehaviors(scenes, dungeon);
     } catch (err) {
-      await Promise.all(scenes.map((s) => s.delete()));
+      await bestEffortDelete(scenes);
       throw err;
     }
     return { journal, scenes };
   } catch (err) {
-    await journal.delete();
+    try {
+      await journal.delete();
+    } catch (deleteErr) {
+      console.error("adapter-foundry: rollback delete failed", deleteErr);
+    }
     throw err;
   }
 }

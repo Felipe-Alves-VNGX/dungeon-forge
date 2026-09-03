@@ -53,10 +53,23 @@ describe('createFloorScenes', () => {
     const pageIdByAreaId = new Map([[0, 'page-0'], [1, 'page-1']]);
     await createFloorScenes(dungeon(), { seed: 'x', gridSize: 100 }, pageIdByAreaId, 'journal-fake-id');
     const [floor0Call] = globalThis.Scene.create.mock.calls.map((c) => c[0]);
-    expect(floor0Call.notes).toHaveLength(1);
+    // floor0 has 1 Area Note plus 1 stair Note (the VerticalLink touches floor 0).
+    expect(floor0Call.notes).toHaveLength(2);
     expect(floor0Call.notes[0].pageId).toBe('page-0');
     expect(floor0Call.notes[0].text).toBe('1-01');
     expect(floor0Call.notes[0].entryId).toBe('journal-fake-id');
+  });
+
+  it('includes one stair Note per VerticalLink touching that floor, pointing at the destination area', async () => {
+    const pageIdByAreaId = new Map([[0, 'page-0'], [1, 'page-1']]);
+    await createFloorScenes(dungeon(), { seed: 'x', gridSize: 100 }, pageIdByAreaId, 'journal-fake-id');
+    const [floor0Call, floor1Call] = globalThis.Scene.create.mock.calls.map((c) => c[0]);
+    const stairNote0 = floor0Call.notes.find((n) => n.text.startsWith('↓') || n.text.startsWith('↑'));
+    expect(stairNote0.text).toBe('↓ 2-01');
+    expect(stairNote0.pageId).toBe('page-1');
+    const stairNote1 = floor1Call.notes.find((n) => n.text.startsWith('↓') || n.text.startsWith('↑'));
+    expect(stairNote1.text).toBe('↑ 1-01');
+    expect(stairNote1.pageId).toBe('page-0');
   });
 
   it('includes one Region per VerticalLink touching that floor, tagged with the link id in flags', async () => {
@@ -171,8 +184,24 @@ describe('emitV13', () => {
   it('deletes the journal AND all scenes if behavior wiring fails', async () => {
     const { journalDelete, sceneDeletes } = stubGlobals({ failAt: 'behavior' });
     const dungeon = {
-      areas: [], key: { entries: [], legend: [] }, walls: [], doors: [], rooms: [], width: 10, height: 10, floors: 2,
-      links: [{ id: 0, fromFloor: 0, toFloor: 1 }],
+      areas: [
+        { id: 0, label: '1-01', floor: 0, roomId: 0, cx: 2, cy: 2, exits: [] },
+        { id: 1, label: '2-01', floor: 1, roomId: 1, cx: 2, cy: 2, exits: [] },
+      ],
+      key: {
+        entries: [
+          { areaId: 0, title: 'Room A', description: 'desc' },
+          { areaId: 1, title: 'Room B', description: 'desc' },
+        ],
+        legend: [],
+      },
+      walls: [], doors: [],
+      rooms: [
+        { id: 0, floor: 0, x: 0, y: 0, w: 4, h: 4, cx: 2, cy: 2, role: 'entrance', doors: [] },
+        { id: 1, floor: 1, x: 0, y: 0, w: 4, h: 4, cx: 2, cy: 2, role: 'climax', doors: [] },
+      ],
+      width: 10, height: 10, floors: 2,
+      links: [{ id: 0, fromFloor: 0, toFloor: 1, x: 5, y: 5, w: 2, h: 1, kind: 'stair', roomIdFrom: 0, roomIdTo: 1 }],
     };
     await expect(emitV13(dungeon, { seed: 'x' })).rejects.toThrow('behavior wiring failed');
     expect(journalDelete).toHaveBeenCalledTimes(1);

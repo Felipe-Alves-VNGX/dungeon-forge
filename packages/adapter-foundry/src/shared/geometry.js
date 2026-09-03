@@ -64,3 +64,21 @@ export function buildNoteData(area, gridSize, pageId, journalId, role) {
     iconSize: Math.round(gridSize * NOTE_ICON_SCALE),
   };
 }
+
+const STAIR_ICON = 'icons/svg/upgrade.svg';
+
+export function buildStairNoteData(link, floor, destinationArea, gridSize, pageId, journalId) {
+  const goingDown = floor === link.fromFloor;
+  const arrow = goingDown ? '↓' : '↑';
+  return {
+    entryId: journalId,
+    pageId,
+    x: toPixel(link.x + link.w / 2, gridSize),
+    y: toPixel(link.y + link.h / 2, gridSize),
+    text: `${arrow} ${destinationArea.label}`,
+    fontSize: NOTE_FONT_SIZE,
+    textAnchor: TEXT_ANCHOR_CENTER,
+    texture: { src: STAIR_ICON },
+    iconSize: Math.round(gridSize * NOTE_ICON_SCALE),
+  };
+}
