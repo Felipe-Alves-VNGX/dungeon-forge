@@ -131,7 +131,7 @@ export function generateDungeon(config) {
       (e) => e.kind !== 'vertical' && floorById.get(e.a) === floor && floorById.get(e.b) === floor
     );
 
-    carve(grid, config.width, config.height, floor, floorRooms, floorEdges, config.carve, links);
+    carve(grid, config.width, config.height, floor, floorRooms, floorEdges, config.carve, links, roomIdAt);
     thickenCorridors(grid, config.width, config.height, floor, residualCellsByFloor[floor]);
     prune(grid, config.width, config.height, floor, config.pruneIterations);
 

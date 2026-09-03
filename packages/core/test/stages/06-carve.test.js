@@ -1,8 +1,8 @@
 // packages/core/test/stages/06-carve.test.js
 import { describe, it, expect } from 'vitest';
-import { CELL, createGrid, setCell, getCell } from '../../src/grid.js';
+import { CELL, createGrid, setCell, getCell, createRoomIdGrid, setRoomId, getRoomId } from '../../src/grid.js';
 import { carve, thickenCorridors } from '../../src/stages/06-carve.js';
-import { rasterizeL } from '../../src/shapes.js';
+import { rasterizeL, rasterizeRoom } from '../../src/shapes.js';
 
 const COSTS = { newHallway: 10, reuseHallway: 1, throughRoom: 50, turn: 2 };
 
@@ -136,6 +136,51 @@ describe('carve — non-rectangular rooms', () => {
 
     const hallwayCount = Array.from(grid).filter((c) => c === CELL.HALLWAY).length;
     expect(hallwayCount).toBeGreaterThan(0);
+  });
+
+  it('falls back to a real member cell when a custom room excludes its bbox centroid', () => {
+    const width = 24;
+    const height = 24;
+    const grid = createGrid(width, height, 1);
+    const roomIdAt = createRoomIdGrid(width, height, 1);
+
+    // 4x4 room at (2,2): rounded centroid is local (2,2), i.e. absolute (4,4).
+    // The custom cell list below deliberately excludes it.
+    const cells = [];
+    for (let dy = 0; dy < 4; dy++) {
+      for (let dx = 0; dx < 4; dx++) {
+        if (dx === 2 && dy === 2) continue;
+        cells.push([dx, dy]);
+      }
+    }
+    const r0 = { ...room(0, 2, 2, 4, 4), shape: { type: 'custom', params: { cells } } };
+    const r1 = room(1, 16, 16, 3, 3);
+
+    for (const cell of rasterizeRoom(r0)) {
+      setCell(grid, cell.x, cell.y, 0, width, height, CELL.ROOM);
+      setRoomId(roomIdAt, cell.x, cell.y, 0, width, height, r0.id);
+    }
+    stampRoom(grid, r1, width, height);
+    for (const cell of rasterizeRoom(r1)) {
+      setRoomId(roomIdAt, cell.x, cell.y, 0, width, height, r1.id);
+    }
+
+    // Sanity check the fixture matches this test's premise: the naive
+    // centroid cell genuinely does not belong to r0.
+    expect(getRoomId(roomIdAt, 4, 4, 0, width, height)).not.toBe(r0.id);
+
+    carve(grid, width, height, 0, [r0, r1], [{ a: 0, b: 1, weight: 1, kind: 'mst' }], COSTS, [], roomIdAt);
+
+    const hallwayCount = Array.from(grid).filter((c) => c === CELL.HALLWAY).length;
+    expect(hallwayCount).toBeGreaterThan(0);
+
+    // The real regression check: without the fix, A* starts from (4,4) — the
+    // deliberately-excluded, CELL.EMPTY notch cell that does NOT belong to
+    // r0 — and carvePath() converts every EMPTY path node (including the
+    // start) to CELL.HALLWAY. With the fix, A* never uses (4,4) as its
+    // start (it finds a real r0-owned cell instead), so (4,4) is never part
+    // of the carved path and must remain untouched.
+    expect(getCell(grid, 4, 4, 0, width, height)).not.toBe(CELL.HALLWAY);
   });
 });
 

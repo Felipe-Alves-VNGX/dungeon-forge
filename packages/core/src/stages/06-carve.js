@@ -1,10 +1,26 @@
-import { CELL, getCell, setCell, inBounds } from '../grid.js';
+import { CELL, getCell, setCell, inBounds, getRoomId } from '../grid.js';
 
-function roomBoundaryCell(room) {
+function roomBoundaryCell(room, roomIdAt, width, height, floor) {
   // A single accessible cell just outside the room's edge, used as the
   // A* target/source so the path connects to the room without cutting
-  // through its interior needlessly.
-  return { x: Math.round(room.cx), y: Math.round(room.cy) };
+  // through its interior needlessly. The rounded-centroid fast path covers
+  // all 5 built-in shape types (each guarantees that cell is a real member
+  // of the room) — the bbox scan below only ever runs for a 'custom' room
+  // whose centroid was excluded by hand, which is the one shape type with
+  // no such guarantee.
+  const cx = Math.round(room.cx);
+  const cy = Math.round(room.cy);
+  if (!roomIdAt || getRoomId(roomIdAt, cx, cy, floor, width, height) === room.id) {
+    return { x: cx, y: cy };
+  }
+  for (let y = room.y; y < room.y + room.h; y++) {
+    for (let x = room.x; x < room.x + room.w; x++) {
+      if (getRoomId(roomIdAt, x, y, floor, width, height) === room.id) {
+        return { x, y };
+      }
+    }
+  }
+  return { x: cx, y: cy }; // unreachable given callers never pass an empty room
 }
 
 function cellCost(cellValue, costs) {
@@ -104,8 +120,9 @@ function carvePath(grid, width, height, floor, path) {
  * @param {import('../types.js').Edge[]} edges
  * @param {import('../types.js').CarveCosts} costs
  * @param {import('../types.js').VerticalLink[]} [links]
+ * @param {Uint32Array} [roomIdAt]
  */
-export function carve(grid, width, height, floor, rooms, edges, costs, links = []) {
+export function carve(grid, width, height, floor, rooms, edges, costs, links = [], roomIdAt = null) {
   const roomsById = new Map(rooms.map((r) => [r.id, r]));
 
   const mst = edges.filter((e) => e.kind === 'mst');
@@ -114,8 +131,8 @@ export function carve(grid, width, height, floor, rooms, edges, costs, links = [
   for (const edge of [...mst, ...cycles]) {
     const roomA = roomsById.get(edge.a);
     const roomB = roomsById.get(edge.b);
-    const start = roomBoundaryCell(roomA);
-    const goal = roomBoundaryCell(roomB);
+    const start = roomBoundaryCell(roomA, roomIdAt, width, height, floor);
+    const goal = roomBoundaryCell(roomB, roomIdAt, width, height, floor);
 
     const path = astar(grid, width, height, floor, start, goal, costs);
     if (!path) continue;
@@ -128,7 +145,7 @@ export function carve(grid, width, height, floor, rooms, edges, costs, links = [
     const room = roomsById.get(roomId);
     if (!room) continue;
 
-    const start = roomBoundaryCell(room);
+    const start = roomBoundaryCell(room, roomIdAt, width, height, floor);
     const goal = { x: link.x, y: link.y };
 
     const path = astar(grid, width, height, floor, start, goal, costs);

@@ -6,7 +6,10 @@
 // rotatable thumbnail, real exits, and an in-memory (unsaved) annotation.
 import { buildRoomThumbnailSVG } from './room-thumbnail.js';
 import { buildFloorEditorSVG, wireFloorEditorDrag } from './floor-editor.js';
-import { SHAPE_TYPES, defaultParamsFor, smallRoomWarningApplies, buildShapeEditorSVG } from './shape-editor.js';
+import {
+  SHAPE_TYPES, defaultParamsFor, smallRoomWarningApplies,
+  buildShapeEditorSVG, cellsFromRoom, toggleCustomCell, isDisconnected, wireShapeEditorToggle,
+} from './shape-editor.js';
 
 const FLOOR_EDITOR_GRID_SIZE = 24;
 const SHAPE_EDITOR_GRID_SIZE = 24;
@@ -110,22 +113,71 @@ function renderShapeEditor() {
   el('shape-w-value').textContent = room.w;
   el('shape-h-value').textContent = room.h;
 
+  // In custom mode, w/h are derived from the bounding box of shape.params.cells
+  // (kept in sync by applyCustomToggle on every cell toggle) — they are never
+  // a direct user input in that mode, so the steppers must be disabled.
+  const sizeSteppersDisabled = type === 'custom';
+  el('shape-w-minus').disabled = sizeSteppersDisabled;
+  el('shape-w-plus').disabled = sizeSteppersDisabled;
+  el('shape-h-minus').disabled = sizeSteppersDisabled;
+  el('shape-h-plus').disabled = sizeSteppersDisabled;
+
   const warning = el('shape-warning');
-  if (smallRoomWarningApplies(type, room.w, room.h)) {
+  if (type === 'custom' && isDisconnected(room.shape.params.cells)) {
+    warning.hidden = false;
+    warning.textContent = 'Células desconectadas — carve.js pode gerar um corredor estranho até aqui.';
+  } else if (smallRoomWarningApplies(type, room.w, room.h)) {
     warning.hidden = false;
     warning.textContent = `Formas L/cruz/círculo/triângulo exigem lado >= 4; esta sala (${room.w}x${room.h}) vira retângulo.`;
   } else {
     warning.hidden = true;
   }
 
-  editorEl.innerHTML = buildShapeEditorSVG(room, dungeon, SHAPE_EDITOR_GRID_SIZE);
+  const interactive = type === 'custom';
+  editorEl.innerHTML = buildShapeEditorSVG(room, dungeon, SHAPE_EDITOR_GRID_SIZE, interactive);
+  if (interactive) {
+    wireShapeEditorToggle(editorEl, (x, y) => applyCustomToggle(room, x, y));
+  }
+}
+
+function applyCustomToggle(room, x, y) {
+  room.shape.params.cells = toggleCustomCell(room.shape.params.cells, room, x, y);
+  const bounds = room.shape.params.cells.reduce(
+    (acc, [dx, dy]) => ({
+      minX: Math.min(acc.minX, dx), minY: Math.min(acc.minY, dy),
+      maxX: Math.max(acc.maxX, dx), maxY: Math.max(acc.maxY, dy),
+    }),
+    { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+  );
+  // Re-anchor room.x/y to the new bounding box's origin and re-express every
+  // stored cell relative to that new origin, so room.x/y/w/h stay the true
+  // bounding box of shape.params.cells (same invariant the other 5 shapes
+  // maintain implicitly via their own w/h-driven rasterizers).
+  room.x += bounds.minX;
+  room.y += bounds.minY;
+  room.w = bounds.maxX - bounds.minX + 1;
+  room.h = bounds.maxY - bounds.minY + 1;
+  room.shape.params.cells = room.shape.params.cells.map(([dx, dy]) => [dx - bounds.minX, dy - bounds.minY]);
+  room.cx = room.x + room.w / 2;
+  room.cy = room.y + room.h / 2;
+  afterShapeChange();
 }
 
 function applyShapeType(type) {
   const room = dungeon.rooms.find((r) => r.id === selectedRoomId);
   if (!room) return;
-  const effective = smallRoomWarningApplies(type, room.w, room.h) ? 'rect' : type;
-  room.shape = { type: effective, params: defaultParamsFor(effective) };
+  if (room.shape?.type === 'custom' && type !== 'custom') {
+    if (!window.confirm('Isso descarta os ajustes manuais desta sala. Continuar?')) {
+      el('shape-type').value = 'custom'; // revert the dropdown's own optimistic change
+      return;
+    }
+  }
+  if (type === 'custom') {
+    room.shape = { type: 'custom', params: { cells: cellsFromRoom(room) } };
+  } else {
+    const effective = smallRoomWarningApplies(type, room.w, room.h) ? 'rect' : type;
+    room.shape = { type: effective, params: defaultParamsFor(effective) };
+  }
   afterShapeChange();
 }
 
@@ -141,6 +193,11 @@ function applyShapeParam(value) {
 function applySizeDelta(dim, delta) {
   const room = dungeon.rooms.find((r) => r.id === selectedRoomId);
   if (!room) return;
+  // Defense in depth: w/h steppers are disabled in the UI while in custom
+  // mode (renderShapeEditor), but guard here too in case this is ever
+  // reached some other way (e.g. a non-conformant browser still firing
+  // click on a disabled button, or a future direct call).
+  if (room.shape?.type === 'custom') return;
   const max = dim === 'w' ? dungeon.width - room.x : dungeon.height - room.y;
   const next = Math.max(1, Math.min(max, room[dim] + delta));
   if (next === room[dim]) return;

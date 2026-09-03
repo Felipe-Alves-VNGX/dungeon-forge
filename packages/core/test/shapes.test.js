@@ -224,3 +224,27 @@ describe('sampleShapeParams("triangle", rng)', () => {
     expect(a).toEqual(b);
   });
 });
+
+describe('rasterizeCustom', () => {
+  it('returns exactly the stored cells translated by room.x/room.y, in order', () => {
+    const r = room(5, 5, 3, 3, { type: 'custom', params: { cells: [[0, 0], [2, 2], [1, 0]] } });
+    const cells = rasterizeRoom(r);
+    expect(cells).toEqual([{ x: 5, y: 5 }, { x: 7, y: 7 }, { x: 6, y: 5 }]);
+  });
+
+  it('does not guarantee the rounded centroid is included (unlike the other 5 shapes)', () => {
+    // A 4x4 room's rounded centroid is (round(cx), round(cy)) = local (2,2).
+    // This custom cell list deliberately excludes it.
+    const cells = [];
+    for (let dy = 0; dy < 4; dy++) {
+      for (let dx = 0; dx < 4; dx++) {
+        if (dx === 2 && dy === 2) continue;
+        cells.push([dx, dy]);
+      }
+    }
+    const r = room(0, 0, 4, 4, { type: 'custom', params: { cells } });
+    const result = rasterizeRoom(r);
+    const target = `${Math.round(r.cx)},${Math.round(r.cy)}`;
+    expect(result.map((c) => `${c.x},${c.y}`)).not.toContain(target);
+  });
+});
