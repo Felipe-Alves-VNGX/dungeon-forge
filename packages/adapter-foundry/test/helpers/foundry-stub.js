@@ -9,6 +9,10 @@ class StubApplicationV2 {
   constructor(options = {}) {
     this.options = options;
   }
+
+  async close() {
+    return this;
+  }
 }
 
 function stubHandlebarsApplicationMixin(Base) {

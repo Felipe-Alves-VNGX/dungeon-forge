@@ -8,6 +8,7 @@
     "verified": "13"
   },
   "esmodules": ["dist/index.js"],
+  "styles": ["styles/room-editor.css"],
   "authors": [],
   "url": "https://github.com/Felipe-Alves-VNGX/dungeon-forge",
   "manifest": "https://github.com/Felipe-Alves-VNGX/dungeon-forge/releases/latest/download/module.json",
