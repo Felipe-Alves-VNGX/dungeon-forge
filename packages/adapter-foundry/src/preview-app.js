@@ -91,10 +91,11 @@ export class DungeonForgePreviewApp extends HandlebarsApplicationMixin(Applicati
   }
 
   static async #onEditRooms() {
-    // Sub-project C (separate plan, not yet implemented) replaces this
-    // with DungeonForgeRoomEditorApp — see
-    // docs/superpowers/specs/2026-09-03-adapter-foundry-room-editor-design.md.
-    ui.notifications.warn('Editor de salas ainda não implementado.');
+    const { DungeonForgeRoomEditorApp } = await import('./room-editor-app.js');
+    new DungeonForgeRoomEditorApp({
+      dungeon: this.dungeon,
+      onClose: () => this.render(),
+    }).render(true);
   }
 
   static async #onCreate() {

@@ -2700,16 +2700,342 @@ var init_src = __esm({
   }
 });
 
+// ../room-shape-ui/src/shape-editor.js
+function defaultParamsFor(type) {
+  const def = SHAPE_TYPES.find((s) => s.type === type);
+  if (!def?.param) return {};
+  return { [def.param.key]: def.param.options[0].value };
+}
+function smallRoomWarningApplies(type, w, h) {
+  return type !== "rect" && type !== "custom" && (w < 4 || h < 4);
+}
+function cellsFromRoom(room) {
+  return rasterizeRoom(room).map((cell) => [cell.x - room.x, cell.y - room.y]);
+}
+function toggleCustomCell(cells, room, x, y) {
+  const dx = x - room.x;
+  const dy = y - room.y;
+  const idx = cells.findIndex(([cdx, cdy]) => cdx === dx && cdy === dy);
+  if (idx === -1) return [...cells, [dx, dy]];
+  if (cells.length === 1) return cells;
+  return cells.filter((_, i) => i !== idx);
+}
+function isDisconnected(cells) {
+  if (cells.length <= 1) return false;
+  const key = (x, y) => `${x},${y}`;
+  const set = new Set(cells.map(([x, y]) => key(x, y)));
+  const seen = /* @__PURE__ */ new Set([key(cells[0][0], cells[0][1])]);
+  const stack = [cells[0]];
+  while (stack.length) {
+    const [x, y] = stack.pop();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const k = key(nx, ny);
+      if (set.has(k) && !seen.has(k)) {
+        seen.add(k);
+        stack.push([nx, ny]);
+      }
+    }
+  }
+  return seen.size < cells.length;
+}
+function buildShapeEditorSVG(room, dungeon, gridSize, interactive = false) {
+  const areaX = Math.max(0, room.x - CELL_PADDING);
+  const areaY = Math.max(0, room.y - CELL_PADDING);
+  const areaMaxX = Math.min(dungeon.width, room.x + room.w + CELL_PADDING);
+  const areaMaxY = Math.min(dungeon.height, room.y + room.h + CELL_PADDING);
+  const cols = areaMaxX - areaX;
+  const rows = areaMaxY - areaY;
+  if (!interactive) {
+    const cells2 = rasterizeRoom(room).map((cell) => {
+      const gx = cell.x - areaX;
+      const gy = cell.y - areaY;
+      return `<rect class="shape-cell-on" x="${gx * gridSize}" y="${gy * gridSize}" width="${gridSize}" height="${gridSize}" />`;
+    }).join("");
+    return `<svg class="shape-editor-svg" viewBox="0 0 ${cols * gridSize} ${rows * gridSize}" xmlns="http://www.w3.org/2000/svg">
+      <rect class="shape-editor-bg" x="0" y="0" width="${cols * gridSize}" height="${rows * gridSize}" />
+      ${cells2}
+    </svg>`;
+  }
+  const onSet = new Set(rasterizeRoom(room).map((cell) => `${cell.x},${cell.y}`));
+  let cells = "";
+  for (let gy = 0; gy < rows; gy++) {
+    for (let gx = 0; gx < cols; gx++) {
+      const cx = areaX + gx;
+      const cy = areaY + gy;
+      const on = onSet.has(`${cx},${cy}`);
+      cells += `<rect class="shape-cell${on ? " shape-cell-on" : ""}" data-cx="${cx}" data-cy="${cy}"
+        x="${gx * gridSize}" y="${gy * gridSize}" width="${gridSize}" height="${gridSize}" />`;
+    }
+  }
+  return `<svg class="shape-editor-svg" viewBox="0 0 ${cols * gridSize} ${rows * gridSize}" xmlns="http://www.w3.org/2000/svg">
+    ${cells}
+  </svg>`;
+}
+function wireShapeEditorToggle(container, onToggle) {
+  const svg = container.querySelector(".shape-editor-svg");
+  if (!svg) return;
+  for (const rect of svg.querySelectorAll(".shape-cell")) {
+    rect.addEventListener("click", () => {
+      onToggle(Number(rect.dataset.cx), Number(rect.dataset.cy));
+    });
+  }
+}
+function applyShapeType(room, type) {
+  if (type === "custom") {
+    room.shape = { type: "custom", params: { cells: cellsFromRoom(room) } };
+    return;
+  }
+  const effective = smallRoomWarningApplies(type, room.w, room.h) ? "rect" : type;
+  room.shape = { type: effective, params: defaultParamsFor(effective) };
+}
+function applyShapeParam(room, value) {
+  if (!room.shape) return;
+  const def = SHAPE_TYPES.find((s) => s.type === room.shape.type);
+  if (!def?.param) return;
+  room.shape = { type: room.shape.type, params: { [def.param.key]: value } };
+}
+function applySizeDelta(room, dungeon, dim, delta) {
+  if (room.shape?.type === "custom") return;
+  const max = dim === "w" ? dungeon.width - room.x : dungeon.height - room.y;
+  const next = Math.max(1, Math.min(max, room[dim] + delta));
+  if (next === room[dim]) return;
+  room[dim] = next;
+  room.cx = room.x + room.w / 2;
+  room.cy = room.y + room.h / 2;
+  const currentType = room.shape?.type ?? "rect";
+  if (smallRoomWarningApplies(currentType, room.w, room.h)) {
+    room.shape = { type: "rect", params: {} };
+  }
+}
+function applyCustomToggle(room, x, y) {
+  room.shape.params.cells = toggleCustomCell(room.shape.params.cells, room, x, y);
+  const bounds = room.shape.params.cells.reduce(
+    (acc, [dx, dy]) => ({
+      minX: Math.min(acc.minX, dx),
+      minY: Math.min(acc.minY, dy),
+      maxX: Math.max(acc.maxX, dx),
+      maxY: Math.max(acc.maxY, dy)
+    }),
+    { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+  );
+  room.x += bounds.minX;
+  room.y += bounds.minY;
+  room.w = bounds.maxX - bounds.minX + 1;
+  room.h = bounds.maxY - bounds.minY + 1;
+  room.shape.params.cells = room.shape.params.cells.map(([dx, dy]) => [dx - bounds.minX, dy - bounds.minY]);
+  room.cx = room.x + room.w / 2;
+  room.cy = room.y + room.h / 2;
+}
+var CELL_PADDING, SHAPE_TYPES;
+var init_shape_editor = __esm({
+  "../room-shape-ui/src/shape-editor.js"() {
+    init_pipeline();
+    CELL_PADDING = 3;
+    SHAPE_TYPES = [
+      { type: "rect", label: "Ret\xE2ngulo", param: null },
+      {
+        type: "l",
+        label: "L",
+        param: {
+          key: "corner",
+          label: "Canto",
+          options: [
+            { value: "nw", label: "Noroeste" },
+            { value: "ne", label: "Nordeste" },
+            { value: "sw", label: "Sudoeste" },
+            { value: "se", label: "Sudeste" }
+          ]
+        }
+      },
+      { type: "cross", label: "Cruz", param: null },
+      { type: "circle", label: "C\xEDrculo", param: null },
+      {
+        type: "triangle",
+        label: "Tri\xE2ngulo",
+        param: {
+          key: "orientation",
+          label: "Orienta\xE7\xE3o",
+          options: [
+            { value: "up", label: "Cima" },
+            { value: "down", label: "Baixo" },
+            { value: "left", label: "Esquerda" },
+            { value: "right", label: "Direita" }
+          ]
+        }
+      },
+      { type: "custom", label: "Come\xE7ar do zero (custom)", param: null }
+    ];
+  }
+});
+
+// src/shared/room-editor-context.js
+function groupRoomsByFloor(rooms, areas, selectedRoomId) {
+  const areaByRoomId = new Map(areas.map((a) => [a.roomId, a]));
+  const byFloor = /* @__PURE__ */ new Map();
+  for (const room of rooms) {
+    if (!byFloor.has(room.floor)) byFloor.set(room.floor, []);
+    byFloor.get(room.floor).push(room);
+  }
+  return [...byFloor.entries()].sort((a, b) => a[0] - b[0]).map(([floor, floorRooms]) => ({
+    floor: floor + 1,
+    rooms: floorRooms.map((room) => ({
+      id: room.id,
+      label: areaByRoomId.get(room.id)?.label ?? String(room.id),
+      active: room.id === selectedRoomId
+    }))
+  }));
+}
+function buildWarningText(room, type) {
+  if (type === "custom" && isDisconnected(room.shape.params.cells)) {
+    return "C\xE9lulas desconectadas \u2014 pode gerar um corredor estranho at\xE9 aqui.";
+  }
+  if (smallRoomWarningApplies(type, room.w, room.h)) {
+    return `Formas L/cruz/c\xEDrculo/tri\xE2ngulo exigem lado >= 4; esta sala (${room.w}x${room.h}) vira ret\xE2ngulo.`;
+  }
+  return null;
+}
+function buildDetailContext(room) {
+  if (!room) return null;
+  const type = room.shape?.type ?? "rect";
+  const def = SHAPE_TYPES.find((s) => s.type === type);
+  const selectedParam = room.shape?.params?.[def?.param?.key] ?? "";
+  return {
+    roomId: room.id,
+    shapeTypes: SHAPE_TYPES.map((s) => ({ ...s, selected: s.type === type })),
+    selectedType: type,
+    hasParam: !!def?.param,
+    paramLabel: def?.param?.label ?? "",
+    paramOptions: (def?.param?.options ?? []).map((o) => ({ ...o, selected: o.value === selectedParam })),
+    w: room.w,
+    h: room.h,
+    sizeSteppersDisabled: type === "custom",
+    warning: buildWarningText(room, type)
+  };
+}
+var init_room_editor_context = __esm({
+  "src/shared/room-editor-context.js"() {
+    init_shape_editor();
+  }
+});
+
+// src/room-editor-app.js
+var room_editor_app_exports = {};
+__export(room_editor_app_exports, {
+  DungeonForgeRoomEditorApp: () => DungeonForgeRoomEditorApp
+});
+var ApplicationV2, HandlebarsApplicationMixin, ROOM_EDITOR_GRID_SIZE, DungeonForgeRoomEditorApp;
+var init_room_editor_app = __esm({
+  "src/room-editor-app.js"() {
+    init_shape_editor();
+    init_room_editor_context();
+    ({ ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api);
+    ROOM_EDITOR_GRID_SIZE = 24;
+    DungeonForgeRoomEditorApp = class _DungeonForgeRoomEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
+      static DEFAULT_OPTIONS = {
+        id: "dungeon-forge-room-editor",
+        window: { title: "Editar Salas", resizable: true },
+        position: { width: 640, height: 520 },
+        actions: {
+          selectRoom: _DungeonForgeRoomEditorApp.#onSelectRoom,
+          resizeW: _DungeonForgeRoomEditorApp.#onResizeW,
+          resizeH: _DungeonForgeRoomEditorApp.#onResizeH
+        }
+      };
+      static PARTS = {
+        roomList: { template: "modules/dungeon-forge/templates/room-editor-list.hbs" },
+        detail: { template: "modules/dungeon-forge/templates/room-editor-detail.hbs" }
+      };
+      constructor({ dungeon, onClose, ...options }) {
+        super(options);
+        this.dungeon = dungeon;
+        this.onClose = onClose;
+        this.selectedRoomId = dungeon.rooms[0]?.id ?? null;
+      }
+      #selectedRoom() {
+        return this.dungeon.rooms.find((r) => r.id === this.selectedRoomId) ?? null;
+      }
+      async _prepareContext() {
+        return {
+          roomsByFloor: groupRoomsByFloor(this.dungeon.rooms, this.dungeon.areas, this.selectedRoomId),
+          detail: buildDetailContext(this.#selectedRoom())
+        };
+      }
+      async _onRender() {
+        const room = this.#selectedRoom();
+        if (!room) return;
+        const typeSelect = this.element.querySelector("[data-shape-type-select]");
+        if (typeSelect && !typeSelect.dataset.listenerBound) {
+          typeSelect.dataset.listenerBound = "true";
+          typeSelect.addEventListener("change", async (event) => {
+            await this.#applyShapeTypeChange(room, event.target.value);
+          });
+        }
+        const paramSelect = this.element.querySelector("[data-shape-param-select]");
+        if (paramSelect && !paramSelect.dataset.listenerBound) {
+          paramSelect.dataset.listenerBound = "true";
+          paramSelect.addEventListener("change", async (event) => {
+            applyShapeParam(room, event.target.value);
+            await this.render();
+          });
+        }
+        const interactive = (room.shape?.type ?? "rect") === "custom";
+        const container = this.element.querySelector("[data-shape-editor]");
+        if (container) {
+          container.innerHTML = buildShapeEditorSVG(room, this.dungeon, ROOM_EDITOR_GRID_SIZE, interactive);
+          if (interactive) {
+            wireShapeEditorToggle(container, (x, y) => {
+              applyCustomToggle(room, x, y);
+              this.render();
+            });
+          }
+        }
+      }
+      async #applyShapeTypeChange(room, nextType) {
+        if (room.shape?.type === "custom" && nextType !== "custom") {
+          if (!window.confirm("Isso descarta os ajustes manuais desta sala. Continuar?")) {
+            await this.render();
+            return;
+          }
+        }
+        applyShapeType(room, nextType);
+        await this.render();
+      }
+      async close(options) {
+        this.onClose?.();
+        return super.close(options);
+      }
+      static async #onSelectRoom(event, target) {
+        this.selectedRoomId = Number(target.dataset.roomId);
+        await this.render();
+      }
+      static async #onResizeW(event, target) {
+        const room = this.dungeon.rooms.find((r) => r.id === this.selectedRoomId);
+        if (!room) return;
+        applySizeDelta(room, this.dungeon, "w", Number(target.dataset.delta));
+        await this.render();
+      }
+      static async #onResizeH(event, target) {
+        const room = this.dungeon.rooms.find((r) => r.id === this.selectedRoomId);
+        if (!room) return;
+        applySizeDelta(room, this.dungeon, "h", Number(target.dataset.delta));
+        await this.render();
+      }
+    };
+  }
+});
+
 // src/preview-app.js
-var ApplicationV2, HandlebarsApplicationMixin, DungeonForgePreviewApp;
+var ApplicationV22, HandlebarsApplicationMixin2, DungeonForgePreviewApp;
 var init_preview_app = __esm({
   "src/preview-app.js"() {
     init_pipeline();
     init_src();
     init_v13();
     init_config_form();
-    ({ ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api);
-    DungeonForgePreviewApp = class _DungeonForgePreviewApp extends HandlebarsApplicationMixin(ApplicationV2) {
+    ({ ApplicationV2: ApplicationV22, HandlebarsApplicationMixin: HandlebarsApplicationMixin2 } = foundry.applications.api);
+    DungeonForgePreviewApp = class _DungeonForgePreviewApp extends HandlebarsApplicationMixin2(ApplicationV22) {
       static DEFAULT_OPTIONS = {
         id: "dungeon-forge-preview",
         window: { title: "Pr\xE9-visualizar Masmorra", resizable: true },
@@ -2784,7 +3110,11 @@ var init_preview_app = __esm({
         new DungeonForgeConfigApp2({ config: this.config }).render(true);
       }
       static async #onEditRooms() {
-        ui.notifications.warn("Editor de salas ainda n\xE3o implementado.");
+        const { DungeonForgeRoomEditorApp: DungeonForgeRoomEditorApp2 } = await Promise.resolve().then(() => (init_room_editor_app(), room_editor_app_exports));
+        new DungeonForgeRoomEditorApp2({
+          dungeon: this.dungeon,
+          onClose: () => this.render()
+        }).render(true);
       }
       static async #onCreate() {
         try {
@@ -2805,14 +3135,14 @@ var config_app_exports = {};
 __export(config_app_exports, {
   DungeonForgeConfigApp: () => DungeonForgeConfigApp
 });
-var ApplicationV22, HandlebarsApplicationMixin2, DungeonForgeConfigApp;
+var ApplicationV23, HandlebarsApplicationMixin3, DungeonForgeConfigApp;
 var init_config_app = __esm({
   "src/config-app.js"() {
     init_pipeline();
     init_config_form();
     init_preview_app();
-    ({ ApplicationV2: ApplicationV22, HandlebarsApplicationMixin: HandlebarsApplicationMixin2 } = foundry.applications.api);
-    DungeonForgeConfigApp = class _DungeonForgeConfigApp extends HandlebarsApplicationMixin2(ApplicationV22) {
+    ({ ApplicationV2: ApplicationV23, HandlebarsApplicationMixin: HandlebarsApplicationMixin3 } = foundry.applications.api);
+    DungeonForgeConfigApp = class _DungeonForgeConfigApp extends HandlebarsApplicationMixin3(ApplicationV23) {
       static DEFAULT_OPTIONS = {
         id: "dungeon-forge-config",
         tag: "form",
