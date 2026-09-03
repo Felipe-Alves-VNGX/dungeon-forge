@@ -7,6 +7,6 @@
     "minimum": "13",
     "verified": "13"
   },
-  "esmodules": ["src/index.js"],
+  "esmodules": ["dist/index.js"],
   "authors": []
 }

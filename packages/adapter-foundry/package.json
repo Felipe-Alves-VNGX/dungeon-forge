@@ -4,7 +4,13 @@
   "private": true,
   "type": "module",
   "main": "src/index.js",
+  "scripts": {
+    "build": "esbuild src/index.js --bundle --format=esm --outfile=dist/index.js"
+  },
   "dependencies": {
     "@dungeon-forge/core": "*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5"
   }
 }
