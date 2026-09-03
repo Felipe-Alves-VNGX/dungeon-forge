@@ -33,6 +33,7 @@ export class DungeonForgePreviewApp extends HandlebarsApplicationMixin(Applicati
     this.floor = 0;
     this.rerollCount = 0;
     this.imageUrl = null;
+    this.renderToken = 0;
   }
 
   async _prepareContext() {
@@ -48,19 +49,28 @@ export class DungeonForgePreviewApp extends HandlebarsApplicationMixin(Applicati
   }
 
   async _onRender() {
+    const token = ++this.renderToken;
     const { blob } = await renderFloor(this.dungeon, this.floor, this.config.gridSize);
-    if (this.imageUrl) URL.revokeObjectURL(this.imageUrl);
-    this.imageUrl = URL.createObjectURL(blob);
-    const img = this.element.querySelector('[data-preview-image]');
-    if (img) img.src = this.imageUrl;
+    if (token === this.renderToken) {
+      if (this.imageUrl) URL.revokeObjectURL(this.imageUrl);
+      this.imageUrl = URL.createObjectURL(blob);
+      const img = this.element.querySelector('[data-preview-image]');
+      if (img) img.src = this.imageUrl;
+    }
 
     const select = this.element.querySelector('[data-floor-select]');
-    if (select) {
+    if (select && !select.dataset.listenerBound) {
+      select.dataset.listenerBound = 'true';
       select.addEventListener('change', async (event) => {
         this.floor = Number(event.target.value);
         await this.render();
       });
     }
+  }
+
+  async close(options) {
+    if (this.imageUrl) URL.revokeObjectURL(this.imageUrl);
+    return super.close(options);
   }
 
   static async #onReroll() {
