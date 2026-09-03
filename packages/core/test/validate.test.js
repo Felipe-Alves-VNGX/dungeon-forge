@@ -124,6 +124,21 @@ describe('validateDungeon', () => {
     expect(errors.some((e) => e.code === 'door-not-open-both-sides')).toBe(true);
   });
 
+  it('flags a door wider than 2 cells', () => {
+    const d = baseDungeon();
+    d.doors = [{ ...d.doors[0], y2: 6 }]; // 3-cell-wide door (y1=3, y2=6)
+    const { ok, errors } = validateDungeon(d);
+    expect(ok).toBe(false);
+    expect(errors.some((e) => e.code === 'door-too-wide')).toBe(true);
+  });
+
+  it('accepts a 2-cell double door', () => {
+    const d = baseDungeon();
+    d.doors = [{ ...d.doors[0], y2: 5 }]; // 2-cell-wide door (y1=3, y2=5)
+    const { errors } = validateDungeon(d);
+    expect(errors.some((e) => e.code === 'door-too-wide')).toBe(false);
+  });
+
   it('flags a WallSegment bordering no walkable cell', () => {
     const d = baseDungeon();
     d.walls = [...d.walls, { floor: 0, x1: 0, y1: 0, x2: 1, y2: 0, isDoor: false, doorId: null }];
