@@ -480,6 +480,22 @@ function checkNoteBudget(dungeon, errors) {
   }
 }
 
+// Invariant 15 — no door is wider than 2 cells. extractWalls (§5.12) caps a
+// wide opening (a room wall running the full length of a wide corridor or a
+// thickened residual patch, 06-carve.js's thickenCorridors) into a single-
+// or double-cell door plus plain wall covering the rest — a door this check
+// catches would mean that cap silently regressed.
+const MAX_DOOR_WIDTH = 2;
+
+function checkDoorWidth(dungeon, errors) {
+  for (const door of dungeon.doors) {
+    const width = door.y1 === door.y2 ? door.x2 - door.x1 : door.y2 - door.y1;
+    if (width > MAX_DOOR_WIDTH) {
+      errors.push(issue('door-too-wide', `door ${door.id} is ${width} cells wide, must be <= ${MAX_DOOR_WIDTH}`, { doorId: door.id, width }));
+    }
+  }
+}
+
 /**
  * @param {import('./types.js').Dungeon} dungeon
  * @returns {{ ok: boolean, errors: object[] }}
@@ -491,6 +507,7 @@ export function validateDungeon(dungeon) {
   checkGlobalConnectivity(dungeon, errors);
   checkVerticalLinks(dungeon, errors);
   checkDoors(dungeon, errors);
+  checkDoorWidth(dungeon, errors);
   checkNoOrphanWalls(dungeon, errors);
   checkNoOrphanDeadEnds(dungeon, errors);
   checkWallBudget(dungeon, errors);

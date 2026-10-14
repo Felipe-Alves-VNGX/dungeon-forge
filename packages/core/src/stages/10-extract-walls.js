@@ -169,6 +169,26 @@ function traceDestinationRoom(grid, roomIdAt, width, height, floor, originRoomId
   return null; // no destination found — shouldn't happen in valid output
 }
 
+// A fused door run longer than this becomes a capped door (1 cell, or a
+// 2-cell double door) plus plain (isDoor: false) wall covering the rest of
+// the run. Without this cap, a room wall running the full length of a wide
+// corridor or a thickened residual patch (06-carve.js's thickenCorridors)
+// would otherwise fuse into one door as wide as the entire wall — this
+// works the same regardless of how wide the adjoining corridor actually is.
+const MAX_DOOR_WIDTH = 2;
+
+/**
+ * Centers a door of at most MAX_DOOR_WIDTH cells within [start, end), and
+ * reports what's left over on either side (covered by plain wall instead).
+ * A run no wider than the cap is returned unchanged.
+ */
+function capDoorRun(start, end) {
+  const length = end - start;
+  if (length <= MAX_DOOR_WIDTH) return { doorStart: start, doorEnd: end };
+  const doorStart = start + Math.floor((length - MAX_DOOR_WIDTH) / 2);
+  return { doorStart, doorEnd: doorStart + MAX_DOOR_WIDTH };
+}
+
 /**
  * @param {Uint8Array} grid
  * @param {number} width @param {number} height @param {number} floor
@@ -195,14 +215,30 @@ export function extractWalls(grid, roomIdAt, width, height, floor, rooms) {
     return { roomId: Number(roomIdStr), toRoomId: toRoomIdStr === 'null' ? null : Number(toRoomIdStr), dir };
   }
 
-  const hDoorSegments = fuseRuns(doorEdges.horizontal, 'y', 'x', 'fuseGroup').map((s) => ({
-    floor, x1: s.start, y1: s.axis, x2: s.end, y2: s.axis, isDoor: true, doorId: null, ...parseFuseGroup(s.group),
-  }));
-  const vDoorSegments = fuseRuns(doorEdges.vertical, 'x', 'y', 'fuseGroup').map((s) => ({
-    floor, x1: s.axis, y1: s.start, x2: s.axis, y2: s.end, isDoor: true, doorId: null, ...parseFuseGroup(s.group),
-  }));
+  // Each fused run becomes one capped door (>= 1 cell, capped at
+  // MAX_DOOR_WIDTH) plus zero, one, or two plain (isDoor: false) wall
+  // fragments covering whatever the cap left over — those overflow
+  // fragments carry no roomId/toRoomId/dir (same shape as a silhouette
+  // wall) since they aren't a door at all.
+  const doorWalls = [];
+  const overflowWalls = [];
 
-  const doorWalls = [...hDoorSegments, ...vDoorSegments];
+  for (const s of fuseRuns(doorEdges.horizontal, 'y', 'x', 'fuseGroup')) {
+    const { doorStart, doorEnd } = capDoorRun(s.start, s.end);
+    doorWalls.push({
+      floor, x1: doorStart, y1: s.axis, x2: doorEnd, y2: s.axis, isDoor: true, doorId: null, ...parseFuseGroup(s.group),
+    });
+    if (doorStart > s.start) overflowWalls.push({ floor, x1: s.start, y1: s.axis, x2: doorStart, y2: s.axis, isDoor: false, doorId: null });
+    if (doorEnd < s.end) overflowWalls.push({ floor, x1: doorEnd, y1: s.axis, x2: s.end, y2: s.axis, isDoor: false, doorId: null });
+  }
+  for (const s of fuseRuns(doorEdges.vertical, 'x', 'y', 'fuseGroup')) {
+    const { doorStart, doorEnd } = capDoorRun(s.start, s.end);
+    doorWalls.push({
+      floor, x1: s.axis, y1: doorStart, x2: s.axis, y2: doorEnd, isDoor: true, doorId: null, ...parseFuseGroup(s.group),
+    });
+    if (doorStart > s.start) overflowWalls.push({ floor, x1: s.axis, y1: s.start, x2: s.axis, y2: doorStart, isDoor: false, doorId: null });
+    if (doorEnd < s.end) overflowWalls.push({ floor, x1: s.axis, y1: doorEnd, x2: s.axis, y2: s.end, isDoor: false, doorId: null });
+  }
 
   let nextDoorId = 0;
   const doors = [];
@@ -233,7 +269,7 @@ export function extractWalls(grid, roomIdAt, width, height, floor, rooms) {
   }
 
   const publicDoorWalls = doorWalls.map(({ roomId, toRoomId, dir, ...rest }) => rest);
-  const walls = [...hWalls, ...vWalls, ...publicDoorWalls];
+  const walls = [...hWalls, ...vWalls, ...publicDoorWalls, ...overflowWalls];
 
   return { walls, doors };
 }

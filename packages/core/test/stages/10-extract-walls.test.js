@@ -171,4 +171,86 @@ describe('extractWalls', () => {
     expect(doors.every((d) => d.toRoomId !== NO_ROOM)).toBe(true);
     expect(doorFrom0.toRoomId).toBe(null);
   });
+
+  describe('door width capping', () => {
+    it('leaves a 1-cell-wide opening as a single-cell door, no overflow wall', () => {
+      const width = 12;
+      const height = 12;
+      const grid = createGrid(width, height, 1);
+      const roomIdAt = createRoomIdGrid(width, height, 1);
+      const r0 = room(0, 2, 2, 4, 4); // east wall at x=6, y:2-5
+      stamp(grid, width, height, r0.x, r0.y, r0.w, r0.h, CELL.ROOM);
+      stampRoomId(roomIdAt, width, height, r0.id, r0.x, r0.y, r0.w, r0.h);
+      // A single hallway cell touching the east wall at y=3.
+      stamp(grid, width, height, r0.x + r0.w, 3, 3, 1, CELL.HALLWAY);
+
+      const { walls, doors } = extractWalls(grid, roomIdAt, width, height, 0, [r0]);
+      const doorWalls = walls.filter((w) => w.isDoor);
+      expect(doorWalls).toHaveLength(1);
+      expect(Math.abs(doorWalls[0].y2 - doorWalls[0].y1)).toBe(1);
+      expect(doors).toHaveLength(1);
+    });
+
+    it('caps a wide opening (5 cells) into a 2-cell door plus plain-wall overflow either side', () => {
+      const width = 14;
+      const height = 14;
+      const grid = createGrid(width, height, 1);
+      const roomIdAt = createRoomIdGrid(width, height, 1);
+      const r0 = room(0, 2, 2, 3, 5); // east wall at x=5, y:2-6 (5 cells tall)
+      stamp(grid, width, height, r0.x, r0.y, r0.w, r0.h, CELL.ROOM);
+      stampRoomId(roomIdAt, width, height, r0.id, r0.x, r0.y, r0.w, r0.h);
+      // A wide (3-cell) hallway patch spanning the room's entire east wall.
+      stamp(grid, width, height, r0.x + r0.w, r0.y, 3, r0.h, CELL.HALLWAY);
+
+      const { walls, doors } = extractWalls(grid, roomIdAt, width, height, 0, [r0]);
+      const doorWalls = walls.filter((w) => w.isDoor);
+      expect(doorWalls).toHaveLength(1);
+      expect(Math.abs(doorWalls[0].y2 - doorWalls[0].y1)).toBe(2); // capped to a 2-cell double door
+
+      // The rest of that same wall run must show up as plain (non-door) wall.
+      const eastX = r0.x + r0.w;
+      const eastNonDoorWalls = walls.filter((w) => !w.isDoor && w.x1 === eastX && w.x2 === eastX);
+      const overflowLength = eastNonDoorWalls.reduce((sum, w) => sum + Math.abs(w.y2 - w.y1), 0);
+      expect(overflowLength).toBe(r0.h - 2); // 5-cell run - 2-cell door = 3 cells of plain wall
+
+      expect(doors).toHaveLength(1);
+      expect(doors[0].roomId).toBe(0);
+    });
+
+    it('room still registers >=1 door after a wide opening is capped (Invariant 8 stays satisfied)', () => {
+      const width = 14;
+      const height = 14;
+      const grid = createGrid(width, height, 1);
+      const roomIdAt = createRoomIdGrid(width, height, 1);
+      const r0 = room(0, 2, 2, 3, 6); // 6-cell-tall east wall, all touching a wide hallway
+      stamp(grid, width, height, r0.x, r0.y, r0.w, r0.h, CELL.ROOM);
+      stampRoomId(roomIdAt, width, height, r0.id, r0.x, r0.y, r0.w, r0.h);
+      stamp(grid, width, height, r0.x + r0.w, r0.y, 4, r0.h, CELL.HALLWAY);
+
+      const { doors } = extractWalls(grid, roomIdAt, width, height, 0, [r0]);
+      r0.doors = doors.filter((d) => d.roomId === 0).map((d) => d.id);
+      expect(r0.doors.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('caps a horizontal (north/south) wide opening the same way as vertical', () => {
+      const width = 14;
+      const height = 14;
+      const grid = createGrid(width, height, 1);
+      const roomIdAt = createRoomIdGrid(width, height, 1);
+      const r0 = room(0, 2, 2, 6, 3); // south wall at y=5, x:2-8 (6 cells wide)
+      stamp(grid, width, height, r0.x, r0.y, r0.w, r0.h, CELL.ROOM);
+      stampRoomId(roomIdAt, width, height, r0.id, r0.x, r0.y, r0.w, r0.h);
+      stamp(grid, width, height, r0.x, r0.y + r0.h, r0.w, 3, CELL.HALLWAY);
+
+      const { walls } = extractWalls(grid, roomIdAt, width, height, 0, [r0]);
+      const doorWalls = walls.filter((w) => w.isDoor);
+      expect(doorWalls).toHaveLength(1);
+      expect(Math.abs(doorWalls[0].x2 - doorWalls[0].x1)).toBe(2);
+
+      const southY = r0.y + r0.h;
+      const southNonDoorWalls = walls.filter((w) => !w.isDoor && w.y1 === southY && w.y2 === southY);
+      const overflowLength = southNonDoorWalls.reduce((sum, w) => sum + Math.abs(w.x2 - w.x1), 0);
+      expect(overflowLength).toBe(r0.w - 2);
+    });
+  });
 });
