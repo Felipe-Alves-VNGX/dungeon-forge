@@ -1,0 +1,10 @@
+{
+  "name": "@dungeon-forge/room-shape-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/shape-editor.js",
+  "dependencies": {
+    "@dungeon-forge/core": "*"
+  }
+}

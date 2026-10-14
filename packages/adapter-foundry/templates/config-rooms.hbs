@@ -1,0 +1,39 @@
+<div class="tab {{tabs.rooms.cssClass}}" data-tab="rooms" data-group="sheet">
+  <div class="form-group">
+    <label>Quantidade de salas</label>
+    <input type="number" name="rooms.count" value="{{formData.rooms.count}}" min="1" step="1">
+  </div>
+  <div class="form-group">
+    <label>Tamanho médio</label>
+    <input type="number" name="rooms.sizeMean" value="{{formData.rooms.sizeMean}}" step="0.1">
+  </div>
+  <div class="form-group">
+    <label>Desvio padrão do tamanho</label>
+    <input type="number" name="rooms.sizeStdDev" value="{{formData.rooms.sizeStdDev}}" step="0.1">
+  </div>
+  <div class="form-group">
+    <label>Tamanho mínimo</label>
+    <input type="number" name="rooms.sizeMin" value="{{formData.rooms.sizeMin}}" min="1" step="1">
+  </div>
+  <div class="form-group">
+    <label>Tamanho máximo</label>
+    <input type="number" name="rooms.sizeMax" value="{{formData.rooms.sizeMax}}" min="1" step="1">
+  </div>
+  <div class="form-group">
+    <label>Raio de posicionamento</label>
+    <input type="number" name="rooms.spawnRadius" value="{{formData.rooms.spawnRadius}}" step="0.1">
+  </div>
+  <div class="form-group">
+    <label>Iterações de separação</label>
+    <input type="number" name="rooms.separationIters" value="{{formData.rooms.separationIters}}" min="0" step="1">
+  </div>
+  <fieldset>
+    <legend>Pesos de formato de sala</legend>
+    {{#each shapeWeightTypes}}
+      <div class="form-group">
+        <label>{{this}}</label>
+        <input type="number" name="shapeWeight.{{this}}" value="{{lookup ../formData.shapeWeight this}}" min="0" step="1">
+      </div>
+    {{/each}}
+  </fieldset>
+</div>

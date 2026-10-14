@@ -9,7 +9,7 @@ import { buildFloorEditorSVG, wireFloorEditorDrag } from './floor-editor.js';
 import {
   SHAPE_TYPES, defaultParamsFor, smallRoomWarningApplies,
   buildShapeEditorSVG, cellsFromRoom, toggleCustomCell, isDisconnected, wireShapeEditorToggle,
-} from './shape-editor.js';
+} from '@dungeon-forge/room-shape-ui';
 
 const FLOOR_EDITOR_GRID_SIZE = 24;
 const SHAPE_EDITOR_GRID_SIZE = 24;

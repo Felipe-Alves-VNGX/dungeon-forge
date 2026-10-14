@@ -132,3 +132,51 @@ export function wireShapeEditorToggle(container, onToggle) {
     });
   }
 }
+
+export function applyShapeType(room, type) {
+  if (type === 'custom') {
+    room.shape = { type: 'custom', params: { cells: cellsFromRoom(room) } };
+    return;
+  }
+  const effective = smallRoomWarningApplies(type, room.w, room.h) ? 'rect' : type;
+  room.shape = { type: effective, params: defaultParamsFor(effective) };
+}
+
+export function applyShapeParam(room, value) {
+  if (!room.shape) return;
+  const def = SHAPE_TYPES.find((s) => s.type === room.shape.type);
+  if (!def?.param) return;
+  room.shape = { type: room.shape.type, params: { [def.param.key]: value } };
+}
+
+export function applySizeDelta(room, dungeon, dim, delta) {
+  if (room.shape?.type === 'custom') return;
+  const max = dim === 'w' ? dungeon.width - room.x : dungeon.height - room.y;
+  const next = Math.max(1, Math.min(max, room[dim] + delta));
+  if (next === room[dim]) return;
+  room[dim] = next;
+  room.cx = room.x + room.w / 2;
+  room.cy = room.y + room.h / 2;
+  const currentType = room.shape?.type ?? 'rect';
+  if (smallRoomWarningApplies(currentType, room.w, room.h)) {
+    room.shape = { type: 'rect', params: {} };
+  }
+}
+
+export function applyCustomToggle(room, x, y) {
+  room.shape.params.cells = toggleCustomCell(room.shape.params.cells, room, x, y);
+  const bounds = room.shape.params.cells.reduce(
+    (acc, [dx, dy]) => ({
+      minX: Math.min(acc.minX, dx), minY: Math.min(acc.minY, dy),
+      maxX: Math.max(acc.maxX, dx), maxY: Math.max(acc.maxY, dy),
+    }),
+    { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+  );
+  room.x += bounds.minX;
+  room.y += bounds.minY;
+  room.w = bounds.maxX - bounds.minX + 1;
+  room.h = bounds.maxY - bounds.minY + 1;
+  room.shape.params.cells = room.shape.params.cells.map(([dx, dy]) => [dx - bounds.minX, dy - bounds.minY]);
+  room.cx = room.x + room.w / 2;
+  room.cy = room.y + room.h / 2;
+}

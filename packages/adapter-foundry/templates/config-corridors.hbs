@@ -1,0 +1,26 @@
+<div class="tab {{tabs.corridors.cssClass}}" data-tab="corridors" data-group="sheet">
+  <div class="form-group">
+    <label>Taxa de ciclos</label>
+    <input type="number" name="cycleRate" value="{{formData.cycleRate}}" min="0" max="1" step="0.01">
+  </div>
+  <div class="form-group">
+    <label>Custo: novo corredor</label>
+    <input type="number" name="carve.newHallway" value="{{formData.carve.newHallway}}" step="1">
+  </div>
+  <div class="form-group">
+    <label>Custo: reaproveitar corredor</label>
+    <input type="number" name="carve.reuseHallway" value="{{formData.carve.reuseHallway}}" step="1">
+  </div>
+  <div class="form-group">
+    <label>Custo: atravessar sala</label>
+    <input type="number" name="carve.throughRoom" value="{{formData.carve.throughRoom}}" step="1">
+  </div>
+  <div class="form-group">
+    <label>Custo: virar</label>
+    <input type="number" name="carve.turn" value="{{formData.carve.turn}}" step="1">
+  </div>
+  <div class="form-group">
+    <label>Iterações de poda</label>
+    <input type="number" name="pruneIterations" value="{{formData.pruneIterations}}" min="0" step="1">
+  </div>
+</div>

@@ -1,0 +1,19 @@
+<div class="dungeon-forge-preview">
+  <header class="preview-header">
+    <span class="preview-seed">Seed: {{seed}}</span>
+    {{#if showFloorSelector}}
+      <select data-floor-select>
+        {{#each floorOptions}}
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+        {{/each}}
+      </select>
+    {{/if}}
+  </header>
+  <img class="preview-image" data-preview-image src="{{imageUrl}}" alt="Pré-visualização da masmorra">
+  <footer class="preview-actions">
+    <button type="button" data-action="reroll">Gerar de novo</button>
+    <button type="button" data-action="back">Voltar e ajustar</button>
+    <button type="button" data-action="editRooms">Editar salas</button>
+    <button type="button" data-action="create">Criar no Foundry</button>
+  </footer>
+</div>

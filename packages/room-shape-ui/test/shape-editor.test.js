@@ -1,6 +1,6 @@
 // harness/test/shape-editor.test.js
 import { describe, it, expect } from 'vitest';
-import { SHAPE_TYPES, defaultParamsFor, smallRoomWarningApplies, buildShapeEditorSVG, cellsFromRoom, toggleCustomCell, isDisconnected, wireShapeEditorToggle } from '../src/shape-editor.js';
+import { SHAPE_TYPES, defaultParamsFor, smallRoomWarningApplies, buildShapeEditorSVG, cellsFromRoom, toggleCustomCell, isDisconnected, wireShapeEditorToggle, applyShapeType, applyShapeParam, applySizeDelta, applyCustomToggle } from '../src/shape-editor.js';
 
 function room(x, y, w, h, shape) {
   return { id: 0, floor: 0, x, y, w, h, cx: x + w / 2, cy: y + h / 2, role: 'filler', doors: [], shape };
@@ -123,5 +123,94 @@ describe('buildShapeEditorSVG (interactive mode)', () => {
     const r = room(5, 5, 2, 2);
     const dungeon = { width: 40, height: 40 };
     expect(buildShapeEditorSVG(r, dungeon, 20)).not.toContain('data-cx');
+  });
+});
+
+describe('applyShapeType', () => {
+  it('sets a non-custom type, falling back to rect when the room is too small for it', () => {
+    const room = { x: 0, y: 0, w: 3, h: 3, shape: { type: 'rect', params: {} } };
+    applyShapeType(room, 'l'); // 'l' needs w,h >= 4; room is 3x3
+    expect(room.shape.type).toBe('rect');
+  });
+
+  it('sets a non-custom type with its default params when the room is big enough', () => {
+    const room = { x: 0, y: 0, w: 6, h: 6, shape: { type: 'rect', params: {} } };
+    applyShapeType(room, 'l');
+    expect(room.shape).toEqual({ type: 'l', params: { corner: 'nw' } });
+  });
+
+  it('switching to custom captures the room\'s current rasterized cells', () => {
+    const room = { x: 2, y: 3, w: 2, h: 2, shape: { type: 'rect', params: {} } };
+    applyShapeType(room, 'custom');
+    expect(room.shape.type).toBe('custom');
+    expect(room.shape.params.cells).toEqual([[0, 0], [1, 0], [0, 1], [1, 1]]);
+  });
+});
+
+describe('applyShapeParam', () => {
+  it('replaces the param object for the current shape type', () => {
+    const room = { shape: { type: 'l', params: { corner: 'nw' } } };
+    applyShapeParam(room, 'se');
+    expect(room.shape).toEqual({ type: 'l', params: { corner: 'se' } });
+  });
+
+  it('does nothing if the current shape type has no param', () => {
+    const room = { shape: { type: 'rect', params: {} } };
+    applyShapeParam(room, 'anything');
+    expect(room.shape).toEqual({ type: 'rect', params: {} });
+  });
+});
+
+describe('applySizeDelta', () => {
+  it('grows w within the dungeon bounds and recenters cx', () => {
+    const room = { x: 0, y: 0, w: 6, h: 6, cx: 3, cy: 3, shape: { type: 'rect', params: {} } };
+    const dungeon = { width: 20, height: 20 };
+    applySizeDelta(room, dungeon, 'w', 1);
+    expect(room.w).toBe(7);
+    expect(room.cx).toBe(3.5);
+  });
+
+  it('clamps growth at the dungeon edge', () => {
+    const room = { x: 18, y: 0, w: 2, h: 2, cx: 19, cy: 1, shape: { type: 'rect', params: {} } };
+    const dungeon = { width: 20, height: 20 };
+    applySizeDelta(room, dungeon, 'w', 5);
+    expect(room.w).toBe(2); // 20 - x(18) = max 2, already at max
+  });
+
+  it('never shrinks below 1', () => {
+    const room = { x: 0, y: 0, w: 1, h: 1, cx: 0.5, cy: 0.5, shape: { type: 'rect', params: {} } };
+    const dungeon = { width: 20, height: 20 };
+    applySizeDelta(room, dungeon, 'w', -5);
+    expect(room.w).toBe(1);
+  });
+
+  it('reverts a too-small non-rect shape back to rect', () => {
+    const room = { x: 0, y: 0, w: 4, h: 4, cx: 2, cy: 2, shape: { type: 'l', params: { corner: 'nw' } } };
+    const dungeon = { width: 20, height: 20 };
+    applySizeDelta(room, dungeon, 'w', -1); // now 3x4, too small for 'l'
+    expect(room.shape).toEqual({ type: 'rect', params: {} });
+  });
+
+  it('is a no-op in custom mode', () => {
+    const room = { x: 0, y: 0, w: 4, h: 4, cx: 2, cy: 2, shape: { type: 'custom', params: { cells: [[0, 0]] } } };
+    const dungeon = { width: 20, height: 20 };
+    applySizeDelta(room, dungeon, 'w', 1);
+    expect(room.w).toBe(4);
+  });
+});
+
+describe('applyCustomToggle', () => {
+  it('adds a cell and re-anchors the bounding box when it extends beyond the current origin', () => {
+    const room = { x: 5, y: 5, w: 1, h: 1, cx: 5.5, cy: 5.5, shape: { type: 'custom', params: { cells: [[0, 0]] } } };
+    applyCustomToggle(room, 4, 5); // one cell to the left of the origin
+    expect(room.x).toBe(4);
+    expect(room.w).toBe(2);
+    expect(room.shape.params.cells).toEqual(expect.arrayContaining([[0, 0], [1, 0]]));
+  });
+
+  it('removes a cell without re-adding it if it was the last one (toggleCustomCell keeps at least one)', () => {
+    const room = { x: 5, y: 5, w: 1, h: 1, cx: 5.5, cy: 5.5, shape: { type: 'custom', params: { cells: [[0, 0]] } } };
+    applyCustomToggle(room, 5, 5); // toggling the only existing cell
+    expect(room.shape.params.cells).toEqual([[0, 0]]);
   });
 });

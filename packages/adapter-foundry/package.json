@@ -8,7 +8,8 @@
     "build": "esbuild src/index.js --bundle --format=esm --outfile=dist/index.js"
   },
   "dependencies": {
-    "@dungeon-forge/core": "*"
+    "@dungeon-forge/core": "*",
+    "@dungeon-forge/room-shape-ui": "*"
   },
   "devDependencies": {
     "esbuild": "^0.21.5"

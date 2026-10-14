@@ -1,3 +1,13 @@
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
 // ../core/src/rng.js
 function sfc32(a, b, c, d) {
   return function next() {
@@ -74,15 +84,12 @@ function buildRng(floatFn) {
 function deriveRng(rootSeed, stageName) {
   return buildRng(makeFloatFn(`${rootSeed}::${stageName}`));
 }
+var init_rng = __esm({
+  "../core/src/rng.js"() {
+  }
+});
 
 // ../core/src/grid.js
-var CELL = Object.freeze({
-  EMPTY: 0,
-  ROOM: 1,
-  HALLWAY: 2,
-  STAIR: 3,
-  BLOCKED: 4
-});
 function createGrid(width, height, floors) {
   return new Uint8Array(width * height * floors);
 }
@@ -98,7 +105,6 @@ function setCell(grid, x, y, z, width, height, value) {
 function inBounds(x, y, z, width, height, floors) {
   return x >= 0 && x < width && y >= 0 && y < height && z >= 0 && z < floors;
 }
-var NO_ROOM = 65535;
 function createRoomIdGrid(width, height, floors) {
   return new Uint16Array(width * height * floors).fill(NO_ROOM);
 }
@@ -108,6 +114,19 @@ function getRoomId(roomIdAt, x, y, z, width, height) {
 function setRoomId(roomIdAt, x, y, z, width, height, roomId) {
   roomIdAt[cellIndex(x, y, z, width, height)] = roomId;
 }
+var CELL, NO_ROOM;
+var init_grid = __esm({
+  "../core/src/grid.js"() {
+    CELL = Object.freeze({
+      EMPTY: 0,
+      ROOM: 1,
+      HALLWAY: 2,
+      STAIR: 3,
+      BLOCKED: 4
+    });
+    NO_ROOM = 65535;
+  }
+});
 
 // ../core/src/shapes.js
 function rasterizeRect(room) {
@@ -208,6 +227,9 @@ function rasterizeTriangle(room, params) {
   }
   return cells;
 }
+function rasterizeCustom(room, params) {
+  return params.cells.map(([dx, dy]) => ({ x: room.x + dx, y: room.y + dy }));
+}
 function sampleShapeParams(type, rng) {
   switch (type) {
     case "l":
@@ -231,10 +253,16 @@ function rasterizeRoom(room) {
       return rasterizeCircle(room);
     case "triangle":
       return rasterizeTriangle(room, room.shape.params);
+    case "custom":
+      return rasterizeCustom(room, room.shape.params);
     default:
       throw new Error(`rasterizeRoom: unknown shape type "${type}"`);
   }
 }
+var init_shapes = __esm({
+  "../core/src/shapes.js"() {
+  }
+});
 
 // ../core/src/stages/01-place-rooms.js
 function placeRooms(params, floor, rng) {
@@ -302,11 +330,13 @@ function placeRooms(params, floor, rng) {
   const residualCells = residual.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
   return { rooms, residualCells };
 }
+var init_place_rooms = __esm({
+  "../core/src/stages/01-place-rooms.js"() {
+    init_shapes();
+  }
+});
 
 // ../../node_modules/robust-predicates/esm/util.js
-var epsilon = 11102230246251565e-32;
-var splitter = 134217729;
-var resulterrbound = (3 + 8 * epsilon) * epsilon;
 function sum(elen, e, flen, f, h) {
   let Q, Qnew, hh, bvirt;
   let enow = e[0];
@@ -386,16 +416,16 @@ function estimate(elen, e) {
 function vec(n) {
   return new Float64Array(n);
 }
+var epsilon, splitter, resulterrbound;
+var init_util = __esm({
+  "../../node_modules/robust-predicates/esm/util.js"() {
+    epsilon = 11102230246251565e-32;
+    splitter = 134217729;
+    resulterrbound = (3 + 8 * epsilon) * epsilon;
+  }
+});
 
 // ../../node_modules/robust-predicates/esm/orient2d.js
-var ccwerrboundA = (3 + 16 * epsilon) * epsilon;
-var ccwerrboundB = (2 + 12 * epsilon) * epsilon;
-var ccwerrboundC = (9 + 64 * epsilon) * epsilon * epsilon;
-var B = vec(4);
-var C1 = vec(8);
-var C2 = vec(12);
-var D = vec(16);
-var u = vec(4);
 function orient2dadapt(ax, ay, bx, by, cx, cy, detsum) {
   let acxtail, acytail, bcxtail, bcytail;
   let bvirt, c, ahi, alo, bhi, blo, _i, _j, _0, s1, s0, t1, t0, u32;
@@ -551,441 +581,160 @@ function orient2d(ax, ay, bx, by, cx, cy) {
   if (Math.abs(det) >= ccwerrboundA * detsum) return det;
   return -orient2dadapt(ax, ay, bx, by, cx, cy, detsum);
 }
+var ccwerrboundA, ccwerrboundB, ccwerrboundC, B, C1, C2, D, u;
+var init_orient2d = __esm({
+  "../../node_modules/robust-predicates/esm/orient2d.js"() {
+    init_util();
+    ccwerrboundA = (3 + 16 * epsilon) * epsilon;
+    ccwerrboundB = (2 + 12 * epsilon) * epsilon;
+    ccwerrboundC = (9 + 64 * epsilon) * epsilon * epsilon;
+    B = vec(4);
+    C1 = vec(8);
+    C2 = vec(12);
+    D = vec(16);
+    u = vec(4);
+  }
+});
 
 // ../../node_modules/robust-predicates/esm/orient3d.js
-var o3derrboundA = (7 + 56 * epsilon) * epsilon;
-var o3derrboundB = (3 + 28 * epsilon) * epsilon;
-var o3derrboundC = (26 + 288 * epsilon) * epsilon * epsilon;
-var bc = vec(4);
-var ca = vec(4);
-var ab = vec(4);
-var at_b = vec(4);
-var at_c = vec(4);
-var bt_c = vec(4);
-var bt_a = vec(4);
-var ct_a = vec(4);
-var ct_b = vec(4);
-var bct = vec(8);
-var cat = vec(8);
-var abt = vec(8);
-var u2 = vec(4);
-var _8 = vec(8);
-var _8b = vec(8);
-var _16 = vec(16);
-var _12 = vec(12);
-var fin = vec(192);
-var fin2 = vec(192);
+var o3derrboundA, o3derrboundB, o3derrboundC, bc, ca, ab, at_b, at_c, bt_c, bt_a, ct_a, ct_b, bct, cat, abt, u2, _8, _8b, _16, _12, fin, fin2;
+var init_orient3d = __esm({
+  "../../node_modules/robust-predicates/esm/orient3d.js"() {
+    init_util();
+    o3derrboundA = (7 + 56 * epsilon) * epsilon;
+    o3derrboundB = (3 + 28 * epsilon) * epsilon;
+    o3derrboundC = (26 + 288 * epsilon) * epsilon * epsilon;
+    bc = vec(4);
+    ca = vec(4);
+    ab = vec(4);
+    at_b = vec(4);
+    at_c = vec(4);
+    bt_c = vec(4);
+    bt_a = vec(4);
+    ct_a = vec(4);
+    ct_b = vec(4);
+    bct = vec(8);
+    cat = vec(8);
+    abt = vec(8);
+    u2 = vec(4);
+    _8 = vec(8);
+    _8b = vec(8);
+    _16 = vec(16);
+    _12 = vec(12);
+    fin = vec(192);
+    fin2 = vec(192);
+  }
+});
 
 // ../../node_modules/robust-predicates/esm/incircle.js
-var iccerrboundA = (10 + 96 * epsilon) * epsilon;
-var iccerrboundB = (4 + 48 * epsilon) * epsilon;
-var iccerrboundC = (44 + 576 * epsilon) * epsilon * epsilon;
-var bc2 = vec(4);
-var ca2 = vec(4);
-var ab2 = vec(4);
-var aa = vec(4);
-var bb = vec(4);
-var cc = vec(4);
-var u3 = vec(4);
-var v = vec(4);
-var axtbc = vec(8);
-var aytbc = vec(8);
-var bxtca = vec(8);
-var bytca = vec(8);
-var cxtab = vec(8);
-var cytab = vec(8);
-var abt2 = vec(8);
-var bct2 = vec(8);
-var cat2 = vec(8);
-var abtt = vec(4);
-var bctt = vec(4);
-var catt = vec(4);
-var _82 = vec(8);
-var _162 = vec(16);
-var _16b = vec(16);
-var _16c = vec(16);
-var _32 = vec(32);
-var _32b = vec(32);
-var _48 = vec(48);
-var _64 = vec(64);
-var fin3 = vec(1152);
-var fin22 = vec(1152);
+var iccerrboundA, iccerrboundB, iccerrboundC, bc2, ca2, ab2, aa, bb, cc, u3, v, axtbc, aytbc, bxtca, bytca, cxtab, cytab, abt2, bct2, cat2, abtt, bctt, catt, _82, _162, _16b, _16c, _32, _32b, _48, _64, fin3, fin22;
+var init_incircle = __esm({
+  "../../node_modules/robust-predicates/esm/incircle.js"() {
+    init_util();
+    iccerrboundA = (10 + 96 * epsilon) * epsilon;
+    iccerrboundB = (4 + 48 * epsilon) * epsilon;
+    iccerrboundC = (44 + 576 * epsilon) * epsilon * epsilon;
+    bc2 = vec(4);
+    ca2 = vec(4);
+    ab2 = vec(4);
+    aa = vec(4);
+    bb = vec(4);
+    cc = vec(4);
+    u3 = vec(4);
+    v = vec(4);
+    axtbc = vec(8);
+    aytbc = vec(8);
+    bxtca = vec(8);
+    bytca = vec(8);
+    cxtab = vec(8);
+    cytab = vec(8);
+    abt2 = vec(8);
+    bct2 = vec(8);
+    cat2 = vec(8);
+    abtt = vec(4);
+    bctt = vec(4);
+    catt = vec(4);
+    _82 = vec(8);
+    _162 = vec(16);
+    _16b = vec(16);
+    _16c = vec(16);
+    _32 = vec(32);
+    _32b = vec(32);
+    _48 = vec(48);
+    _64 = vec(64);
+    fin3 = vec(1152);
+    fin22 = vec(1152);
+  }
+});
 
 // ../../node_modules/robust-predicates/esm/insphere.js
-var isperrboundA = (16 + 224 * epsilon) * epsilon;
-var isperrboundB = (5 + 72 * epsilon) * epsilon;
-var isperrboundC = (71 + 1408 * epsilon) * epsilon * epsilon;
-var ab3 = vec(4);
-var bc3 = vec(4);
-var cd = vec(4);
-var de = vec(4);
-var ea = vec(4);
-var ac = vec(4);
-var bd = vec(4);
-var ce = vec(4);
-var da = vec(4);
-var eb = vec(4);
-var abc = vec(24);
-var bcd = vec(24);
-var cde = vec(24);
-var dea = vec(24);
-var eab = vec(24);
-var abd = vec(24);
-var bce = vec(24);
-var cda = vec(24);
-var deb = vec(24);
-var eac = vec(24);
-var adet = vec(1152);
-var bdet = vec(1152);
-var cdet = vec(1152);
-var ddet = vec(1152);
-var edet = vec(1152);
-var abdet = vec(2304);
-var cddet = vec(2304);
-var cdedet = vec(3456);
-var deter = vec(5760);
-var _83 = vec(8);
-var _8b2 = vec(8);
-var _8c = vec(8);
-var _163 = vec(16);
-var _24 = vec(24);
-var _482 = vec(48);
-var _48b = vec(48);
-var _96 = vec(96);
-var _192 = vec(192);
-var _384x = vec(384);
-var _384y = vec(384);
-var _384z = vec(384);
-var _768 = vec(768);
-var xdet = vec(96);
-var ydet = vec(96);
-var zdet = vec(96);
-var fin4 = vec(1152);
+var isperrboundA, isperrboundB, isperrboundC, ab3, bc3, cd, de, ea, ac, bd, ce, da, eb, abc, bcd, cde, dea, eab, abd, bce, cda, deb, eac, adet, bdet, cdet, ddet, edet, abdet, cddet, cdedet, deter, _83, _8b2, _8c, _163, _24, _482, _48b, _96, _192, _384x, _384y, _384z, _768, xdet, ydet, zdet, fin4;
+var init_insphere = __esm({
+  "../../node_modules/robust-predicates/esm/insphere.js"() {
+    init_util();
+    isperrboundA = (16 + 224 * epsilon) * epsilon;
+    isperrboundB = (5 + 72 * epsilon) * epsilon;
+    isperrboundC = (71 + 1408 * epsilon) * epsilon * epsilon;
+    ab3 = vec(4);
+    bc3 = vec(4);
+    cd = vec(4);
+    de = vec(4);
+    ea = vec(4);
+    ac = vec(4);
+    bd = vec(4);
+    ce = vec(4);
+    da = vec(4);
+    eb = vec(4);
+    abc = vec(24);
+    bcd = vec(24);
+    cde = vec(24);
+    dea = vec(24);
+    eab = vec(24);
+    abd = vec(24);
+    bce = vec(24);
+    cda = vec(24);
+    deb = vec(24);
+    eac = vec(24);
+    adet = vec(1152);
+    bdet = vec(1152);
+    cdet = vec(1152);
+    ddet = vec(1152);
+    edet = vec(1152);
+    abdet = vec(2304);
+    cddet = vec(2304);
+    cdedet = vec(3456);
+    deter = vec(5760);
+    _83 = vec(8);
+    _8b2 = vec(8);
+    _8c = vec(8);
+    _163 = vec(16);
+    _24 = vec(24);
+    _482 = vec(48);
+    _48b = vec(48);
+    _96 = vec(96);
+    _192 = vec(192);
+    _384x = vec(384);
+    _384y = vec(384);
+    _384z = vec(384);
+    _768 = vec(768);
+    xdet = vec(96);
+    ydet = vec(96);
+    zdet = vec(96);
+    fin4 = vec(1152);
+  }
+});
+
+// ../../node_modules/robust-predicates/index.js
+var init_robust_predicates = __esm({
+  "../../node_modules/robust-predicates/index.js"() {
+    init_orient2d();
+    init_orient3d();
+    init_incircle();
+    init_insphere();
+  }
+});
 
 // ../../node_modules/delaunator/index.js
-var EPSILON = Math.pow(2, -52);
-var EDGE_STACK = new Uint32Array(512);
-var Delaunator = class _Delaunator {
-  /**
-   * Constructs a delaunay triangulation object given an array of points (`[x, y]` by default).
-   * `getX` and `getY` are optional functions of the form `(point) => value` for custom point formats.
-   *
-   * @template P
-   * @param {P[]} points
-   * @param {(p: P) => number} [getX]
-   * @param {(p: P) => number} [getY]
-   */
-  // @ts-expect-error TS2322
-  static from(points, getX = defaultGetX, getY = defaultGetY) {
-    const n = points.length;
-    const coords = new Float64Array(n * 2);
-    for (let i = 0; i < n; i++) {
-      const p = points[i];
-      coords[2 * i] = getX(p);
-      coords[2 * i + 1] = getY(p);
-    }
-    return new _Delaunator(coords);
-  }
-  /**
-   * Constructs a delaunay triangulation object given an array of point coordinates of the form:
-   * `[x0, y0, x1, y1, ...]` (use a typed array for best performance). Duplicate points are skipped.
-   *
-   * @param {T} coords
-   */
-  constructor(coords) {
-    const n = coords.length >> 1;
-    if (n > 0 && typeof coords[0] !== "number") throw new Error("Expected coords to contain numbers.");
-    this.coords = coords;
-    const maxTriangles = Math.max(2 * n - 5, 0);
-    this._triangles = new Uint32Array(maxTriangles * 3);
-    this._halfedges = new Int32Array(maxTriangles * 3);
-    this._hashSize = Math.ceil(Math.sqrt(n));
-    this._hullPrev = new Uint32Array(n);
-    this._hullNext = new Uint32Array(n);
-    this._hullTri = new Uint32Array(n);
-    this._hullHash = new Int32Array(this._hashSize);
-    this._ids = new Uint32Array(n);
-    this._dists = new Float64Array(n);
-    this.trianglesLen = 0;
-    this._cx = 0;
-    this._cy = 0;
-    this._hullStart = 0;
-    this.hull = this._triangles;
-    this.triangles = this._triangles;
-    this.halfedges = this._halfedges;
-    this.update();
-  }
-  /**
-   * Updates the triangulation if you modified `delaunay.coords` values in place, avoiding expensive memory allocations.
-   * Useful for iterative relaxation algorithms such as Lloyd's.
-   */
-  update() {
-    const { coords, _hullPrev: hullPrev, _hullNext: hullNext, _hullTri: hullTri, _hullHash: hullHash } = this;
-    const n = coords.length >> 1;
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (let i = 0; i < n; i++) {
-      const x = coords[2 * i];
-      const y = coords[2 * i + 1];
-      if (x < minX) minX = x;
-      if (y < minY) minY = y;
-      if (x > maxX) maxX = x;
-      if (y > maxY) maxY = y;
-      this._ids[i] = i;
-    }
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
-    let i0 = 0, i1 = 0, i2 = 0;
-    for (let i = 0, minDist = Infinity; i < n; i++) {
-      const d = dist(cx, cy, coords[2 * i], coords[2 * i + 1]);
-      if (d < minDist) {
-        i0 = i;
-        minDist = d;
-      }
-    }
-    const i0x = coords[2 * i0];
-    const i0y = coords[2 * i0 + 1];
-    for (let i = 0, minDist = Infinity; i < n; i++) {
-      if (i === i0) continue;
-      const d = dist(i0x, i0y, coords[2 * i], coords[2 * i + 1]);
-      if (d < minDist && d > 0) {
-        i1 = i;
-        minDist = d;
-      }
-    }
-    let i1x = coords[2 * i1];
-    let i1y = coords[2 * i1 + 1];
-    let minRadius = Infinity;
-    for (let i = 0; i < n; i++) {
-      if (i === i0 || i === i1) continue;
-      const r = circumradius(i0x, i0y, i1x, i1y, coords[2 * i], coords[2 * i + 1]);
-      if (r < minRadius) {
-        i2 = i;
-        minRadius = r;
-      }
-    }
-    let i2x = coords[2 * i2];
-    let i2y = coords[2 * i2 + 1];
-    if (minRadius === Infinity) {
-      for (let i = 0; i < n; i++) {
-        this._dists[i] = coords[2 * i] - coords[0] || coords[2 * i + 1] - coords[1];
-      }
-      quicksort(this._ids, this._dists, 0, n - 1);
-      const hull = new Uint32Array(n);
-      let j = 0;
-      for (let i = 0, d0 = -Infinity; i < n; i++) {
-        const id = this._ids[i];
-        const d = this._dists[id];
-        if (d > d0) {
-          hull[j++] = id;
-          d0 = d;
-        }
-      }
-      this.hull = hull.subarray(0, j);
-      this.triangles = new Uint32Array(0);
-      this.halfedges = new Int32Array(0);
-      return;
-    }
-    if (orient2d(i0x, i0y, i1x, i1y, i2x, i2y) < 0) {
-      const i = i1;
-      const x = i1x;
-      const y = i1y;
-      i1 = i2;
-      i1x = i2x;
-      i1y = i2y;
-      i2 = i;
-      i2x = x;
-      i2y = y;
-    }
-    const center = circumcenter(i0x, i0y, i1x, i1y, i2x, i2y);
-    this._cx = center.x;
-    this._cy = center.y;
-    for (let i = 0; i < n; i++) {
-      this._dists[i] = dist(coords[2 * i], coords[2 * i + 1], center.x, center.y);
-    }
-    quicksort(this._ids, this._dists, 0, n - 1);
-    this._hullStart = i0;
-    let hullSize = 3;
-    hullNext[i0] = hullPrev[i2] = i1;
-    hullNext[i1] = hullPrev[i0] = i2;
-    hullNext[i2] = hullPrev[i1] = i0;
-    hullTri[i0] = 0;
-    hullTri[i1] = 1;
-    hullTri[i2] = 2;
-    hullHash.fill(-1);
-    hullHash[this._hashKey(i0x, i0y)] = i0;
-    hullHash[this._hashKey(i1x, i1y)] = i1;
-    hullHash[this._hashKey(i2x, i2y)] = i2;
-    this.trianglesLen = 0;
-    this._addTriangle(i0, i1, i2, -1, -1, -1);
-    for (let k = 0, xp = 0, yp = 0; k < this._ids.length; k++) {
-      const i = this._ids[k];
-      const x = coords[2 * i];
-      const y = coords[2 * i + 1];
-      if (k > 0 && Math.abs(x - xp) <= EPSILON && Math.abs(y - yp) <= EPSILON) continue;
-      xp = x;
-      yp = y;
-      if (i === i0 || i === i1 || i === i2) continue;
-      let start = 0;
-      for (let j = 0, key = this._hashKey(x, y); j < this._hashSize; j++) {
-        start = hullHash[(key + j) % this._hashSize];
-        if (start !== -1 && start !== hullNext[start]) break;
-      }
-      start = hullPrev[start];
-      let e = start, q;
-      while (q = hullNext[e], orient2d(x, y, coords[2 * e], coords[2 * e + 1], coords[2 * q], coords[2 * q + 1]) >= 0) {
-        e = q;
-        if (e === start) {
-          e = -1;
-          break;
-        }
-      }
-      if (e === -1) continue;
-      let t = this._addTriangle(e, i, hullNext[e], -1, -1, hullTri[e]);
-      hullTri[i] = this._legalize(t + 2);
-      hullTri[e] = t;
-      hullSize++;
-      let n2 = hullNext[e];
-      while (q = hullNext[n2], orient2d(x, y, coords[2 * n2], coords[2 * n2 + 1], coords[2 * q], coords[2 * q + 1]) < 0) {
-        t = this._addTriangle(n2, i, q, hullTri[i], -1, hullTri[n2]);
-        hullTri[i] = this._legalize(t + 2);
-        hullNext[n2] = n2;
-        hullSize--;
-        n2 = q;
-      }
-      if (e === start) {
-        while (q = hullPrev[e], orient2d(x, y, coords[2 * q], coords[2 * q + 1], coords[2 * e], coords[2 * e + 1]) < 0) {
-          t = this._addTriangle(q, i, e, -1, hullTri[e], hullTri[q]);
-          this._legalize(t + 2);
-          hullTri[q] = t;
-          hullNext[e] = e;
-          hullSize--;
-          e = q;
-        }
-      }
-      this._hullStart = hullPrev[i] = e;
-      hullNext[e] = hullPrev[n2] = i;
-      hullNext[i] = n2;
-      hullHash[this._hashKey(x, y)] = i;
-      hullHash[this._hashKey(coords[2 * e], coords[2 * e + 1])] = e;
-    }
-    this.hull = new Uint32Array(hullSize);
-    for (let i = 0, e = this._hullStart; i < hullSize; i++) {
-      this.hull[i] = e;
-      e = hullNext[e];
-    }
-    this.triangles = this._triangles.subarray(0, this.trianglesLen);
-    this.halfedges = this._halfedges.subarray(0, this.trianglesLen);
-  }
-  /**
-   * Calculate an angle-based key for the edge hash used for advancing convex hull.
-   *
-   * @param {number} x
-   * @param {number} y
-   * @private
-   */
-  _hashKey(x, y) {
-    return Math.floor(pseudoAngle(x - this._cx, y - this._cy) * this._hashSize) % this._hashSize;
-  }
-  /**
-   * Flip an edge in a pair of triangles if it doesn't satisfy the Delaunay condition.
-   *
-   * @param {number} a
-   * @private
-   */
-  _legalize(a) {
-    const { _triangles: triangles, _halfedges: halfedges, coords } = this;
-    let i = 0;
-    let ar = 0;
-    while (true) {
-      const b = halfedges[a];
-      const a0 = a - a % 3;
-      ar = a0 + (a + 2) % 3;
-      if (b === -1) {
-        if (i === 0) break;
-        a = EDGE_STACK[--i];
-        continue;
-      }
-      const b0 = b - b % 3;
-      const al = a0 + (a + 1) % 3;
-      const bl = b0 + (b + 2) % 3;
-      const p0 = triangles[ar];
-      const pr = triangles[a];
-      const pl = triangles[al];
-      const p1 = triangles[bl];
-      const illegal = inCircle(
-        coords[2 * p0],
-        coords[2 * p0 + 1],
-        coords[2 * pr],
-        coords[2 * pr + 1],
-        coords[2 * pl],
-        coords[2 * pl + 1],
-        coords[2 * p1],
-        coords[2 * p1 + 1]
-      );
-      if (illegal) {
-        triangles[a] = p1;
-        triangles[b] = p0;
-        const hbl = halfedges[bl];
-        if (hbl === -1) {
-          let e = this._hullStart;
-          do {
-            if (this._hullTri[e] === bl) {
-              this._hullTri[e] = a;
-              break;
-            }
-            e = this._hullPrev[e];
-          } while (e !== this._hullStart);
-        }
-        this._link(a, hbl);
-        this._link(b, halfedges[ar]);
-        this._link(ar, bl);
-        const br = b0 + (b + 1) % 3;
-        if (i < EDGE_STACK.length) {
-          EDGE_STACK[i++] = br;
-        }
-      } else {
-        if (i === 0) break;
-        a = EDGE_STACK[--i];
-      }
-    }
-    return ar;
-  }
-  /**
-   * Link two half-edges to each other.
-   * @param {number} a
-   * @param {number} b
-   * @private
-   */
-  _link(a, b) {
-    this._halfedges[a] = b;
-    if (b !== -1) this._halfedges[b] = a;
-  }
-  /**
-   * Add a new triangle given vertex indices and adjacent half-edge ids.
-   *
-   * @param {number} i0
-   * @param {number} i1
-   * @param {number} i2
-   * @param {number} a
-   * @param {number} b
-   * @param {number} c
-   * @private
-   */
-  _addTriangle(i0, i1, i2, a, b, c) {
-    const t = this.trianglesLen;
-    this._triangles[t] = i0;
-    this._triangles[t + 1] = i1;
-    this._triangles[t + 2] = i2;
-    this._link(t, a);
-    this._link(t + 1, b);
-    this._link(t + 2, c);
-    this.trianglesLen += 3;
-    return t;
-  }
-};
 function pseudoAngle(dx, dy) {
   const p = dx / (Math.abs(dx) + Math.abs(dy));
   return (dy > 0 ? 3 - p : 1 + p) / 4;
@@ -1082,6 +831,335 @@ function defaultGetX(p) {
 function defaultGetY(p) {
   return p[1];
 }
+var EPSILON, EDGE_STACK, Delaunator;
+var init_delaunator = __esm({
+  "../../node_modules/delaunator/index.js"() {
+    init_robust_predicates();
+    EPSILON = Math.pow(2, -52);
+    EDGE_STACK = new Uint32Array(512);
+    Delaunator = class _Delaunator {
+      /**
+       * Constructs a delaunay triangulation object given an array of points (`[x, y]` by default).
+       * `getX` and `getY` are optional functions of the form `(point) => value` for custom point formats.
+       *
+       * @template P
+       * @param {P[]} points
+       * @param {(p: P) => number} [getX]
+       * @param {(p: P) => number} [getY]
+       */
+      // @ts-expect-error TS2322
+      static from(points, getX = defaultGetX, getY = defaultGetY) {
+        const n = points.length;
+        const coords = new Float64Array(n * 2);
+        for (let i = 0; i < n; i++) {
+          const p = points[i];
+          coords[2 * i] = getX(p);
+          coords[2 * i + 1] = getY(p);
+        }
+        return new _Delaunator(coords);
+      }
+      /**
+       * Constructs a delaunay triangulation object given an array of point coordinates of the form:
+       * `[x0, y0, x1, y1, ...]` (use a typed array for best performance). Duplicate points are skipped.
+       *
+       * @param {T} coords
+       */
+      constructor(coords) {
+        const n = coords.length >> 1;
+        if (n > 0 && typeof coords[0] !== "number") throw new Error("Expected coords to contain numbers.");
+        this.coords = coords;
+        const maxTriangles = Math.max(2 * n - 5, 0);
+        this._triangles = new Uint32Array(maxTriangles * 3);
+        this._halfedges = new Int32Array(maxTriangles * 3);
+        this._hashSize = Math.ceil(Math.sqrt(n));
+        this._hullPrev = new Uint32Array(n);
+        this._hullNext = new Uint32Array(n);
+        this._hullTri = new Uint32Array(n);
+        this._hullHash = new Int32Array(this._hashSize);
+        this._ids = new Uint32Array(n);
+        this._dists = new Float64Array(n);
+        this.trianglesLen = 0;
+        this._cx = 0;
+        this._cy = 0;
+        this._hullStart = 0;
+        this.hull = this._triangles;
+        this.triangles = this._triangles;
+        this.halfedges = this._halfedges;
+        this.update();
+      }
+      /**
+       * Updates the triangulation if you modified `delaunay.coords` values in place, avoiding expensive memory allocations.
+       * Useful for iterative relaxation algorithms such as Lloyd's.
+       */
+      update() {
+        const { coords, _hullPrev: hullPrev, _hullNext: hullNext, _hullTri: hullTri, _hullHash: hullHash } = this;
+        const n = coords.length >> 1;
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        for (let i = 0; i < n; i++) {
+          const x = coords[2 * i];
+          const y = coords[2 * i + 1];
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+          this._ids[i] = i;
+        }
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
+        let i0 = 0, i1 = 0, i2 = 0;
+        for (let i = 0, minDist = Infinity; i < n; i++) {
+          const d = dist(cx, cy, coords[2 * i], coords[2 * i + 1]);
+          if (d < minDist) {
+            i0 = i;
+            minDist = d;
+          }
+        }
+        const i0x = coords[2 * i0];
+        const i0y = coords[2 * i0 + 1];
+        for (let i = 0, minDist = Infinity; i < n; i++) {
+          if (i === i0) continue;
+          const d = dist(i0x, i0y, coords[2 * i], coords[2 * i + 1]);
+          if (d < minDist && d > 0) {
+            i1 = i;
+            minDist = d;
+          }
+        }
+        let i1x = coords[2 * i1];
+        let i1y = coords[2 * i1 + 1];
+        let minRadius = Infinity;
+        for (let i = 0; i < n; i++) {
+          if (i === i0 || i === i1) continue;
+          const r = circumradius(i0x, i0y, i1x, i1y, coords[2 * i], coords[2 * i + 1]);
+          if (r < minRadius) {
+            i2 = i;
+            minRadius = r;
+          }
+        }
+        let i2x = coords[2 * i2];
+        let i2y = coords[2 * i2 + 1];
+        if (minRadius === Infinity) {
+          for (let i = 0; i < n; i++) {
+            this._dists[i] = coords[2 * i] - coords[0] || coords[2 * i + 1] - coords[1];
+          }
+          quicksort(this._ids, this._dists, 0, n - 1);
+          const hull = new Uint32Array(n);
+          let j = 0;
+          for (let i = 0, d0 = -Infinity; i < n; i++) {
+            const id = this._ids[i];
+            const d = this._dists[id];
+            if (d > d0) {
+              hull[j++] = id;
+              d0 = d;
+            }
+          }
+          this.hull = hull.subarray(0, j);
+          this.triangles = new Uint32Array(0);
+          this.halfedges = new Int32Array(0);
+          return;
+        }
+        if (orient2d(i0x, i0y, i1x, i1y, i2x, i2y) < 0) {
+          const i = i1;
+          const x = i1x;
+          const y = i1y;
+          i1 = i2;
+          i1x = i2x;
+          i1y = i2y;
+          i2 = i;
+          i2x = x;
+          i2y = y;
+        }
+        const center = circumcenter(i0x, i0y, i1x, i1y, i2x, i2y);
+        this._cx = center.x;
+        this._cy = center.y;
+        for (let i = 0; i < n; i++) {
+          this._dists[i] = dist(coords[2 * i], coords[2 * i + 1], center.x, center.y);
+        }
+        quicksort(this._ids, this._dists, 0, n - 1);
+        this._hullStart = i0;
+        let hullSize = 3;
+        hullNext[i0] = hullPrev[i2] = i1;
+        hullNext[i1] = hullPrev[i0] = i2;
+        hullNext[i2] = hullPrev[i1] = i0;
+        hullTri[i0] = 0;
+        hullTri[i1] = 1;
+        hullTri[i2] = 2;
+        hullHash.fill(-1);
+        hullHash[this._hashKey(i0x, i0y)] = i0;
+        hullHash[this._hashKey(i1x, i1y)] = i1;
+        hullHash[this._hashKey(i2x, i2y)] = i2;
+        this.trianglesLen = 0;
+        this._addTriangle(i0, i1, i2, -1, -1, -1);
+        for (let k = 0, xp = 0, yp = 0; k < this._ids.length; k++) {
+          const i = this._ids[k];
+          const x = coords[2 * i];
+          const y = coords[2 * i + 1];
+          if (k > 0 && Math.abs(x - xp) <= EPSILON && Math.abs(y - yp) <= EPSILON) continue;
+          xp = x;
+          yp = y;
+          if (i === i0 || i === i1 || i === i2) continue;
+          let start = 0;
+          for (let j = 0, key = this._hashKey(x, y); j < this._hashSize; j++) {
+            start = hullHash[(key + j) % this._hashSize];
+            if (start !== -1 && start !== hullNext[start]) break;
+          }
+          start = hullPrev[start];
+          let e = start, q;
+          while (q = hullNext[e], orient2d(x, y, coords[2 * e], coords[2 * e + 1], coords[2 * q], coords[2 * q + 1]) >= 0) {
+            e = q;
+            if (e === start) {
+              e = -1;
+              break;
+            }
+          }
+          if (e === -1) continue;
+          let t = this._addTriangle(e, i, hullNext[e], -1, -1, hullTri[e]);
+          hullTri[i] = this._legalize(t + 2);
+          hullTri[e] = t;
+          hullSize++;
+          let n2 = hullNext[e];
+          while (q = hullNext[n2], orient2d(x, y, coords[2 * n2], coords[2 * n2 + 1], coords[2 * q], coords[2 * q + 1]) < 0) {
+            t = this._addTriangle(n2, i, q, hullTri[i], -1, hullTri[n2]);
+            hullTri[i] = this._legalize(t + 2);
+            hullNext[n2] = n2;
+            hullSize--;
+            n2 = q;
+          }
+          if (e === start) {
+            while (q = hullPrev[e], orient2d(x, y, coords[2 * q], coords[2 * q + 1], coords[2 * e], coords[2 * e + 1]) < 0) {
+              t = this._addTriangle(q, i, e, -1, hullTri[e], hullTri[q]);
+              this._legalize(t + 2);
+              hullTri[q] = t;
+              hullNext[e] = e;
+              hullSize--;
+              e = q;
+            }
+          }
+          this._hullStart = hullPrev[i] = e;
+          hullNext[e] = hullPrev[n2] = i;
+          hullNext[i] = n2;
+          hullHash[this._hashKey(x, y)] = i;
+          hullHash[this._hashKey(coords[2 * e], coords[2 * e + 1])] = e;
+        }
+        this.hull = new Uint32Array(hullSize);
+        for (let i = 0, e = this._hullStart; i < hullSize; i++) {
+          this.hull[i] = e;
+          e = hullNext[e];
+        }
+        this.triangles = this._triangles.subarray(0, this.trianglesLen);
+        this.halfedges = this._halfedges.subarray(0, this.trianglesLen);
+      }
+      /**
+       * Calculate an angle-based key for the edge hash used for advancing convex hull.
+       *
+       * @param {number} x
+       * @param {number} y
+       * @private
+       */
+      _hashKey(x, y) {
+        return Math.floor(pseudoAngle(x - this._cx, y - this._cy) * this._hashSize) % this._hashSize;
+      }
+      /**
+       * Flip an edge in a pair of triangles if it doesn't satisfy the Delaunay condition.
+       *
+       * @param {number} a
+       * @private
+       */
+      _legalize(a) {
+        const { _triangles: triangles, _halfedges: halfedges, coords } = this;
+        let i = 0;
+        let ar = 0;
+        while (true) {
+          const b = halfedges[a];
+          const a0 = a - a % 3;
+          ar = a0 + (a + 2) % 3;
+          if (b === -1) {
+            if (i === 0) break;
+            a = EDGE_STACK[--i];
+            continue;
+          }
+          const b0 = b - b % 3;
+          const al = a0 + (a + 1) % 3;
+          const bl = b0 + (b + 2) % 3;
+          const p0 = triangles[ar];
+          const pr = triangles[a];
+          const pl = triangles[al];
+          const p1 = triangles[bl];
+          const illegal = inCircle(
+            coords[2 * p0],
+            coords[2 * p0 + 1],
+            coords[2 * pr],
+            coords[2 * pr + 1],
+            coords[2 * pl],
+            coords[2 * pl + 1],
+            coords[2 * p1],
+            coords[2 * p1 + 1]
+          );
+          if (illegal) {
+            triangles[a] = p1;
+            triangles[b] = p0;
+            const hbl = halfedges[bl];
+            if (hbl === -1) {
+              let e = this._hullStart;
+              do {
+                if (this._hullTri[e] === bl) {
+                  this._hullTri[e] = a;
+                  break;
+                }
+                e = this._hullPrev[e];
+              } while (e !== this._hullStart);
+            }
+            this._link(a, hbl);
+            this._link(b, halfedges[ar]);
+            this._link(ar, bl);
+            const br = b0 + (b + 1) % 3;
+            if (i < EDGE_STACK.length) {
+              EDGE_STACK[i++] = br;
+            }
+          } else {
+            if (i === 0) break;
+            a = EDGE_STACK[--i];
+          }
+        }
+        return ar;
+      }
+      /**
+       * Link two half-edges to each other.
+       * @param {number} a
+       * @param {number} b
+       * @private
+       */
+      _link(a, b) {
+        this._halfedges[a] = b;
+        if (b !== -1) this._halfedges[b] = a;
+      }
+      /**
+       * Add a new triangle given vertex indices and adjacent half-edge ids.
+       *
+       * @param {number} i0
+       * @param {number} i1
+       * @param {number} i2
+       * @param {number} a
+       * @param {number} b
+       * @param {number} c
+       * @private
+       */
+      _addTriangle(i0, i1, i2, a, b, c) {
+        const t = this.trianglesLen;
+        this._triangles[t] = i0;
+        this._triangles[t + 1] = i1;
+        this._triangles[t + 2] = i2;
+        this._link(t, a);
+        this._link(t + 1, b);
+        this._link(t + 2, c);
+        this.trianglesLen += 3;
+        return t;
+      }
+    };
+  }
+});
 
 // ../core/src/stages/02-triangulate.js
 function triangulate(rooms) {
@@ -1112,6 +1190,11 @@ function triangulate(rooms) {
   }
   return Array.from(edgeSet.values());
 }
+var init_triangulate = __esm({
+  "../core/src/stages/02-triangulate.js"() {
+    init_delaunator();
+  }
+});
 
 // ../core/src/stages/03-spanning-tree.js
 function spanningTree(rooms, edges) {
@@ -1138,6 +1221,10 @@ function spanningTree(rooms, edges) {
   }
   return mst;
 }
+var init_spanning_tree = __esm({
+  "../core/src/stages/03-spanning-tree.js"() {
+  }
+});
 
 // ../core/src/stages/04-add-cycles.js
 function addCycles(allEdges, mstEdges, cycleRate, rng) {
@@ -1152,11 +1239,12 @@ function addCycles(allEdges, mstEdges, cycleRate, rng) {
   }
   return result;
 }
+var init_add_cycles = __esm({
+  "../core/src/stages/04-add-cycles.js"() {
+  }
+});
 
 // ../core/src/stages/05-vertical-links.js
-var LINK_W = 2;
-var LINK_H = 1;
-var MAX_ROOM_GAP = 3;
 function footprintFree(grid, x, y, floor, width, height) {
   for (let dy = 0; dy < LINK_H; dy++) {
     for (let dx = 0; dx < LINK_W; dx++) {
@@ -1271,10 +1359,31 @@ function verticalLinks(grid, width, height, floors, rooms, verticalLinksPerGap, 
   }
   return { links, edges };
 }
+var LINK_W, LINK_H, MAX_ROOM_GAP;
+var init_vertical_links = __esm({
+  "../core/src/stages/05-vertical-links.js"() {
+    init_grid();
+    LINK_W = 2;
+    LINK_H = 1;
+    MAX_ROOM_GAP = 3;
+  }
+});
 
 // ../core/src/stages/06-carve.js
-function roomBoundaryCell(room) {
-  return { x: Math.round(room.cx), y: Math.round(room.cy) };
+function roomBoundaryCell(room, roomIdAt, width, height, floor) {
+  const cx = Math.round(room.cx);
+  const cy = Math.round(room.cy);
+  if (!roomIdAt || getRoomId(roomIdAt, cx, cy, floor, width, height) === room.id) {
+    return { x: cx, y: cy };
+  }
+  for (let y = room.y; y < room.y + room.h; y++) {
+    for (let x = room.x; x < room.x + room.w; x++) {
+      if (getRoomId(roomIdAt, x, y, floor, width, height) === room.id) {
+        return { x, y };
+      }
+    }
+  }
+  return { x: cx, y: cy };
 }
 function cellCost(cellValue, costs) {
   switch (cellValue) {
@@ -1351,15 +1460,15 @@ function carvePath(grid, width, height, floor, path) {
     }
   }
 }
-function carve(grid, width, height, floor, rooms, edges, costs, links = []) {
+function carve(grid, width, height, floor, rooms, edges, costs, links = [], roomIdAt = null) {
   const roomsById = new Map(rooms.map((r) => [r.id, r]));
   const mst = edges.filter((e) => e.kind === "mst");
   const cycles = edges.filter((e) => e.kind === "cycle");
   for (const edge of [...mst, ...cycles]) {
     const roomA = roomsById.get(edge.a);
     const roomB = roomsById.get(edge.b);
-    const start = roomBoundaryCell(roomA);
-    const goal = roomBoundaryCell(roomB);
+    const start = roomBoundaryCell(roomA, roomIdAt, width, height, floor);
+    const goal = roomBoundaryCell(roomB, roomIdAt, width, height, floor);
     const path = astar(grid, width, height, floor, start, goal, costs);
     if (!path) continue;
     carvePath(grid, width, height, floor, path);
@@ -1369,7 +1478,7 @@ function carve(grid, width, height, floor, rooms, edges, costs, links = []) {
     const roomId = link.fromFloor === floor ? link.roomIdFrom : link.roomIdTo;
     const room = roomsById.get(roomId);
     if (!room) continue;
-    const start = roomBoundaryCell(room);
+    const start = roomBoundaryCell(room, roomIdAt, width, height, floor);
     const goal = { x: link.x, y: link.y };
     const path = astar(grid, width, height, floor, start, goal, costs);
     if (!path) continue;
@@ -1402,14 +1511,13 @@ function thickenCorridors(grid, width, height, floor, residualCells) {
     }
   }
 }
+var init_carve = __esm({
+  "../core/src/stages/06-carve.js"() {
+    init_grid();
+  }
+});
 
 // ../core/src/stages/07-prune.js
-var DIRS = [
-  { dx: 1, dy: 0 },
-  { dx: -1, dy: 0 },
-  { dx: 0, dy: 1 },
-  { dx: 0, dy: -1 }
-];
 function isWalkable(value) {
   return value === CELL.ROOM || value === CELL.HALLWAY || value === CELL.STAIR;
 }
@@ -1443,6 +1551,18 @@ function prune(grid, width, height, floor, iterations) {
     }
   }
 }
+var DIRS;
+var init_prune = __esm({
+  "../core/src/stages/07-prune.js"() {
+    init_grid();
+    DIRS = [
+      { dx: 1, dy: 0 },
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: 0, dy: -1 }
+    ];
+  }
+});
 
 // ../core/src/stages/08-mission.js
 function buildAdjacency(rooms, edges) {
@@ -1579,22 +1699,12 @@ function assignSecretDoors(rooms, doors) {
     if (door) door.secret = true;
   }
 }
+var init_mission = __esm({
+  "../core/src/stages/08-mission.js"() {
+  }
+});
 
 // ../core/src/stages/09-key.js
-var TITLE_BY_ROLE = {
-  entrance: "Entrada",
-  climax: "C\xE2mara final",
-  treasure: "C\xE2mara isolada",
-  junction: "Encruzilhada",
-  filler: null
-  // filled per-area below: "Área {label}"
-};
-var LEGEND_BY_ROLE = {
-  entrance: { kind: "entrance", caption: "Entrada da masmorra" },
-  climax: { kind: "climax", caption: "C\xE2mara final" },
-  treasure: { kind: "treasure", caption: "C\xE2mara de tesouro opcional" },
-  junction: { kind: "junction", caption: "Encruzilhada" }
-};
 function formatLabel(scheme, floor, number, padTo) {
   const padded = String(number).padStart(padTo, "0");
   if (scheme === "flat") return String(number);
@@ -1673,7 +1783,6 @@ function exitsFor(room, doorsById, links, labelByRoomId) {
   }
   return exits;
 }
-var OPPOSITE_DIR = { n: "s", s: "n", e: "w", w: "e", up: "down", down: "up" };
 function synchronizeExits(areas) {
   const areasByLabel = new Map(areas.map((a) => [a.label, a]));
   for (const area of areas) {
@@ -1764,6 +1873,26 @@ function buildKey(rooms, adjacency, entranceRoomId, keyConfig, links = [], doors
     }
   };
 }
+var TITLE_BY_ROLE, LEGEND_BY_ROLE, OPPOSITE_DIR;
+var init_key = __esm({
+  "../core/src/stages/09-key.js"() {
+    TITLE_BY_ROLE = {
+      entrance: "Entrada",
+      climax: "C\xE2mara final",
+      treasure: "C\xE2mara isolada",
+      junction: "Encruzilhada",
+      filler: null
+      // filled per-area below: "Área {label}"
+    };
+    LEGEND_BY_ROLE = {
+      entrance: { kind: "entrance", caption: "Entrada da masmorra" },
+      climax: { kind: "climax", caption: "C\xE2mara final" },
+      treasure: { kind: "treasure", caption: "C\xE2mara de tesouro opcional" },
+      junction: { kind: "junction", caption: "Encruzilhada" }
+    };
+    OPPOSITE_DIR = { n: "s", s: "n", e: "w", w: "e", up: "down", down: "up" };
+  }
+});
 
 // ../core/src/stages/10-extract-walls.js
 function isWalkable2(value) {
@@ -1799,12 +1928,6 @@ function collectSilhouetteEdges(grid, width, height, floor) {
 function isDoorOpening(cellValue) {
   return cellValue === CELL.HALLWAY || cellValue === CELL.STAIR;
 }
-var DOOR_NEIGHBORS = [
-  { dx: 0, dy: -1, dir: "n" },
-  { dx: 0, dy: 1, dir: "s" },
-  { dx: -1, dy: 0, dir: "w" },
-  { dx: 1, dy: 0, dir: "e" }
-];
 function roomIdAtCell(roomIdAt, x, y, floor, width, height) {
   if (!inBounds(x, y, floor, width, height, floor + 1)) return null;
   const id = getRoomId(roomIdAt, x, y, floor, width, height);
@@ -1958,6 +2081,25 @@ function extractWalls(grid, roomIdAt, width, height, floor, rooms) {
   const walls = [...hWalls, ...vWalls, ...publicDoorWalls];
   return { walls, doors };
 }
+var DOOR_NEIGHBORS;
+var init_extract_walls = __esm({
+  "../core/src/stages/10-extract-walls.js"() {
+    init_grid();
+    DOOR_NEIGHBORS = [
+      { dx: 0, dy: -1, dir: "n" },
+      { dx: 0, dy: 1, dir: "s" },
+      { dx: -1, dy: 0, dir: "w" },
+      { dx: 1, dy: 0, dir: "e" }
+    ];
+  }
+});
+
+// ../core/src/validate.js
+var init_validate = __esm({
+  "../core/src/validate.js"() {
+    init_grid();
+  }
+});
 
 // ../core/src/pipeline.js
 function separateClampedRooms(floorRooms, width, height) {
@@ -2049,7 +2191,7 @@ function generateDungeon(config) {
     const floorEdges = edges.filter(
       (e) => e.kind !== "vertical" && floorById.get(e.a) === floor && floorById.get(e.b) === floor
     );
-    carve(grid, config.width, config.height, floor, floorRooms, floorEdges, config.carve, links);
+    carve(grid, config.width, config.height, floor, floorRooms, floorEdges, config.carve, links, roomIdAt);
     thickenCorridors(grid, config.width, config.height, floor, residualCellsByFloor[floor]);
     prune(grid, config.width, config.height, floor, config.pruneIterations);
     const { walls: floorWalls, doors: floorDoors } = extractWalls(
@@ -2100,29 +2242,43 @@ function generateDungeon(config) {
     key
   };
 }
+var init_pipeline = __esm({
+  "../core/src/pipeline.js"() {
+    init_rng();
+    init_grid();
+    init_shapes();
+    init_place_rooms();
+    init_triangulate();
+    init_spanning_tree();
+    init_add_cycles();
+    init_vertical_links();
+    init_carve();
+    init_prune();
+    init_mission();
+    init_key();
+    init_extract_walls();
+    init_validate();
+  }
+});
 
 // src/shared/icons.js
-var ROLE_ICON = {
-  entrance: "icons/svg/door-exit.svg",
-  climax: "icons/svg/skull.svg",
-  treasure: "icons/svg/chest.svg",
-  junction: "icons/svg/pawprint.svg",
-  filler: "icons/svg/village.svg"
-};
 function iconForRole(role) {
   return ROLE_ICON[role] ?? ROLE_ICON.filler;
 }
+var ROLE_ICON;
+var init_icons = __esm({
+  "src/shared/icons.js"() {
+    ROLE_ICON = {
+      entrance: "icons/svg/door-exit.svg",
+      climax: "icons/svg/skull.svg",
+      treasure: "icons/svg/chest.svg",
+      junction: "icons/svg/pawprint.svg",
+      filler: "icons/svg/village.svg"
+    };
+  }
+});
 
 // src/shared/geometry.js
-var WALL_SENSE_NORMAL = 20;
-var WALL_DOOR_NONE = 0;
-var WALL_DOOR_DOOR = 1;
-var WALL_DOOR_SECRET = 2;
-var WALL_DOOR_STATE_CLOSED = 0;
-var WALL_DIR_BOTH = 0;
-var TEXT_ANCHOR_CENTER = 0;
-var NOTE_FONT_SIZE = 32;
-var NOTE_ICON_SCALE = 0.6;
 function toPixel(cell, gridSize) {
   return cell * gridSize;
 }
@@ -2157,7 +2313,6 @@ function buildNoteData(area, gridSize, pageId, journalId, role) {
     iconSize: Math.round(gridSize * NOTE_ICON_SCALE)
   };
 }
-var STAIR_ICON = "icons/svg/upgrade.svg";
 function buildStairNoteData(link, floor, destinationArea, gridSize, pageId, journalId) {
   const goingDown = floor === link.fromFloor;
   const arrow = goingDown ? "\u2193" : "\u2191";
@@ -2173,9 +2328,24 @@ function buildStairNoteData(link, floor, destinationArea, gridSize, pageId, jour
     iconSize: Math.round(gridSize * NOTE_ICON_SCALE)
   };
 }
+var WALL_SENSE_NORMAL, WALL_DOOR_NONE, WALL_DOOR_DOOR, WALL_DOOR_SECRET, WALL_DOOR_STATE_CLOSED, WALL_DIR_BOTH, TEXT_ANCHOR_CENTER, NOTE_FONT_SIZE, NOTE_ICON_SCALE, STAIR_ICON;
+var init_geometry = __esm({
+  "src/shared/geometry.js"() {
+    init_icons();
+    WALL_SENSE_NORMAL = 20;
+    WALL_DOOR_NONE = 0;
+    WALL_DOOR_DOOR = 1;
+    WALL_DOOR_SECRET = 2;
+    WALL_DOOR_STATE_CLOSED = 0;
+    WALL_DIR_BOTH = 0;
+    TEXT_ANCHOR_CENTER = 0;
+    NOTE_FONT_SIZE = 32;
+    NOTE_ICON_SCALE = 0.6;
+    STAIR_ICON = "icons/svg/upgrade.svg";
+  }
+});
 
 // src/shared/key-journal.js
-var JOURNAL_FORMAT_HTML = 1;
 function pageNameForArea(area, entry) {
   return `${area.label} \u2014 ${entry.title}`;
 }
@@ -2218,6 +2388,12 @@ function mapAreaPagesById(journal, dungeon) {
   }
   return map;
 }
+var JOURNAL_FORMAT_HTML;
+var init_key_journal = __esm({
+  "src/shared/key-journal.js"() {
+    JOURNAL_FORMAT_HTML = 1;
+  }
+});
 
 // src/v13.js
 async function bestEffortDelete(docs) {
@@ -2326,8 +2502,712 @@ async function emitV13(dungeon, config) {
     throw err;
   }
 }
+var init_v13 = __esm({
+  "src/v13.js"() {
+    init_geometry();
+    init_key_journal();
+  }
+});
+
+// src/shared/config-form.js
+function shapesFromWeights(weights) {
+  const shapes = SHAPE_WEIGHT_TYPES.map((type) => ({ type, weight: Number(weights?.[type] ?? 0) })).filter((entry) => entry.weight > 0);
+  return shapes.length > 0 ? shapes : [{ type: "rect", weight: 1 }];
+}
+function weightsFromShapes(shapes) {
+  const weights = Object.fromEntries(SHAPE_WEIGHT_TYPES.map((type) => [type, 0]));
+  const source = shapes && shapes.length > 0 ? shapes : DEFAULT_CONFIG.rooms.shapes;
+  for (const entry of source) {
+    weights[entry.type] = entry.weight;
+  }
+  return weights;
+}
+function expandFlat(obj) {
+  const result = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const parts = key.split(".");
+    let cursor = result;
+    for (let i = 0; i < parts.length - 1; i++) {
+      cursor[parts[i]] ??= {};
+      cursor = cursor[parts[i]];
+    }
+    cursor[parts.at(-1)] = value;
+  }
+  return result;
+}
+function configFromFormData(rawFormObject) {
+  const formObject = expandFlat(rawFormObject);
+  return {
+    target: "v13",
+    seed: formObject.seed || DEFAULT_CONFIG.seed,
+    floors: Number(formObject.floors),
+    width: Number(formObject.width),
+    height: Number(formObject.height),
+    gridSize: Number(formObject.gridSize),
+    rooms: {
+      count: Number(formObject.rooms.count),
+      sizeMean: Number(formObject.rooms.sizeMean),
+      sizeStdDev: Number(formObject.rooms.sizeStdDev),
+      sizeMin: Number(formObject.rooms.sizeMin),
+      sizeMax: Number(formObject.rooms.sizeMax),
+      spawnRadius: Number(formObject.rooms.spawnRadius),
+      separationIters: Number(formObject.rooms.separationIters),
+      shapes: shapesFromWeights(formObject.shapeWeight)
+    },
+    cycleRate: Number(formObject.cycleRate),
+    verticalLinksPerGap: Number(formObject.verticalLinksPerGap),
+    carve: {
+      newHallway: Number(formObject.carve.newHallway),
+      reuseHallway: Number(formObject.carve.reuseHallway),
+      throughRoom: Number(formObject.carve.throughRoom),
+      turn: Number(formObject.carve.turn)
+    },
+    pruneIterations: Number(formObject.pruneIterations),
+    key: {
+      scheme: formObject.key.scheme,
+      numberJunctions: Boolean(formObject.key.numberJunctions),
+      startAt: Number(formObject.key.startAt),
+      padTo: Number(formObject.key.padTo),
+      exitsInEntries: Boolean(formObject.key.exitsInEntries)
+    }
+  };
+}
+function formDataFromConfig(config) {
+  return {
+    seed: config.seed,
+    floors: config.floors,
+    width: config.width,
+    height: config.height,
+    gridSize: config.gridSize,
+    rooms: {
+      count: config.rooms.count,
+      sizeMean: config.rooms.sizeMean,
+      sizeStdDev: config.rooms.sizeStdDev,
+      sizeMin: config.rooms.sizeMin,
+      sizeMax: config.rooms.sizeMax,
+      spawnRadius: config.rooms.spawnRadius,
+      separationIters: config.rooms.separationIters
+    },
+    shapeWeight: weightsFromShapes(config.rooms.shapes),
+    cycleRate: config.cycleRate,
+    verticalLinksPerGap: config.verticalLinksPerGap,
+    carve: { ...config.carve },
+    pruneIterations: config.pruneIterations,
+    key: { ...config.key },
+    schemeOptions: KEY_SCHEME_OPTIONS.map((opt) => ({ ...opt, selected: opt.value === config.key.scheme }))
+  };
+}
+function nextRerollSeed(seed, rerollCount) {
+  return `${seed}::reroll-${rerollCount}`;
+}
+var SHAPE_WEIGHT_TYPES, KEY_SCHEME_OPTIONS, DEFAULT_CONFIG;
+var init_config_form = __esm({
+  "src/shared/config-form.js"() {
+    SHAPE_WEIGHT_TYPES = ["rect", "l", "cross", "circle", "triangle"];
+    KEY_SCHEME_OPTIONS = [
+      { value: "flat", label: "Flat" },
+      { value: "per-floor", label: "Por andar" },
+      { value: "alpha-floor", label: "Alfa por andar" }
+    ];
+    DEFAULT_CONFIG = {
+      target: "v13",
+      seed: "nova-masmorra",
+      floors: 2,
+      width: 50,
+      height: 50,
+      gridSize: 100,
+      rooms: {
+        count: 9,
+        sizeMean: 7,
+        sizeStdDev: 2.5,
+        sizeMin: 3,
+        sizeMax: 14,
+        spawnRadius: 18,
+        separationIters: 60,
+        shapes: [{ type: "rect", weight: 1 }]
+      },
+      cycleRate: 0.25,
+      verticalLinksPerGap: 2,
+      carve: { newHallway: 10, reuseHallway: 1, throughRoom: 50, turn: 2 },
+      pruneIterations: 8,
+      key: { scheme: "per-floor", numberJunctions: false, startAt: 1, padTo: 2, exitsInEntries: true }
+    };
+  }
+});
+
+// ../render/src/plan.js
+var plan_exports = {};
+__export(plan_exports, {
+  buildRenderPlan: () => buildRenderPlan
+});
+function buildRenderPlan(dungeon, floor, gridSize) {
+  const doorsById = new Map((dungeon.doors ?? []).map((d) => [d.id, d]));
+  const wallLines = dungeon.walls.filter((w) => w.floor === floor).map((w) => ({
+    x1: w.x1 * gridSize,
+    y1: w.y1 * gridSize,
+    x2: w.x2 * gridSize,
+    y2: w.y2 * gridSize,
+    isDoor: w.isDoor && !(w.doorId !== null && doorsById.get(w.doorId)?.secret)
+  }));
+  return {
+    width: dungeon.width * gridSize,
+    height: dungeon.height * gridSize,
+    floorRects: [{ x: 0, y: 0, w: dungeon.width * gridSize, h: dungeon.height * gridSize }],
+    wallLines
+  };
+}
+var init_plan = __esm({
+  "../render/src/plan.js"() {
+  }
+});
+
+// ../render/src/draw.js
+function drawPlanToContext(plan, ctx) {
+  ctx.save();
+  ctx.fillStyle = "#2a2a2a";
+  for (const rect of plan.floorRects) {
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+  ctx.lineWidth = 4;
+  for (const line of plan.wallLines) {
+    ctx.strokeStyle = line.isDoor ? "#c8963e" : "#0a0a0a";
+    ctx.beginPath();
+    ctx.moveTo(line.x1, line.y1);
+    ctx.lineTo(line.x2, line.y2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+async function renderFloor(dungeon, floor, gridSize) {
+  const { buildRenderPlan: buildRenderPlan2 } = await Promise.resolve().then(() => (init_plan(), plan_exports));
+  const plan = buildRenderPlan2(dungeon, floor, gridSize);
+  const canvas = new OffscreenCanvas(plan.width, plan.height);
+  const ctx = canvas.getContext("2d");
+  drawPlanToContext(plan, ctx);
+  const blob = await canvas.convertToBlob({ type: "image/png" });
+  return { floor, blob, width: plan.width, height: plan.height };
+}
+var init_draw = __esm({
+  "../render/src/draw.js"() {
+  }
+});
+
+// ../render/src/index.js
+var init_src = __esm({
+  "../render/src/index.js"() {
+    init_plan();
+    init_draw();
+  }
+});
+
+// ../room-shape-ui/src/shape-editor.js
+function defaultParamsFor(type) {
+  const def = SHAPE_TYPES.find((s) => s.type === type);
+  if (!def?.param) return {};
+  return { [def.param.key]: def.param.options[0].value };
+}
+function smallRoomWarningApplies(type, w, h) {
+  return type !== "rect" && type !== "custom" && (w < 4 || h < 4);
+}
+function cellsFromRoom(room) {
+  return rasterizeRoom(room).map((cell) => [cell.x - room.x, cell.y - room.y]);
+}
+function toggleCustomCell(cells, room, x, y) {
+  const dx = x - room.x;
+  const dy = y - room.y;
+  const idx = cells.findIndex(([cdx, cdy]) => cdx === dx && cdy === dy);
+  if (idx === -1) return [...cells, [dx, dy]];
+  if (cells.length === 1) return cells;
+  return cells.filter((_, i) => i !== idx);
+}
+function isDisconnected(cells) {
+  if (cells.length <= 1) return false;
+  const key = (x, y) => `${x},${y}`;
+  const set = new Set(cells.map(([x, y]) => key(x, y)));
+  const seen = /* @__PURE__ */ new Set([key(cells[0][0], cells[0][1])]);
+  const stack = [cells[0]];
+  while (stack.length) {
+    const [x, y] = stack.pop();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const k = key(nx, ny);
+      if (set.has(k) && !seen.has(k)) {
+        seen.add(k);
+        stack.push([nx, ny]);
+      }
+    }
+  }
+  return seen.size < cells.length;
+}
+function buildShapeEditorSVG(room, dungeon, gridSize, interactive = false) {
+  const areaX = Math.max(0, room.x - CELL_PADDING);
+  const areaY = Math.max(0, room.y - CELL_PADDING);
+  const areaMaxX = Math.min(dungeon.width, room.x + room.w + CELL_PADDING);
+  const areaMaxY = Math.min(dungeon.height, room.y + room.h + CELL_PADDING);
+  const cols = areaMaxX - areaX;
+  const rows = areaMaxY - areaY;
+  if (!interactive) {
+    const cells2 = rasterizeRoom(room).map((cell) => {
+      const gx = cell.x - areaX;
+      const gy = cell.y - areaY;
+      return `<rect class="shape-cell-on" x="${gx * gridSize}" y="${gy * gridSize}" width="${gridSize}" height="${gridSize}" />`;
+    }).join("");
+    return `<svg class="shape-editor-svg" viewBox="0 0 ${cols * gridSize} ${rows * gridSize}" xmlns="http://www.w3.org/2000/svg">
+      <rect class="shape-editor-bg" x="0" y="0" width="${cols * gridSize}" height="${rows * gridSize}" />
+      ${cells2}
+    </svg>`;
+  }
+  const onSet = new Set(rasterizeRoom(room).map((cell) => `${cell.x},${cell.y}`));
+  let cells = "";
+  for (let gy = 0; gy < rows; gy++) {
+    for (let gx = 0; gx < cols; gx++) {
+      const cx = areaX + gx;
+      const cy = areaY + gy;
+      const on = onSet.has(`${cx},${cy}`);
+      cells += `<rect class="shape-cell${on ? " shape-cell-on" : ""}" data-cx="${cx}" data-cy="${cy}"
+        x="${gx * gridSize}" y="${gy * gridSize}" width="${gridSize}" height="${gridSize}" />`;
+    }
+  }
+  return `<svg class="shape-editor-svg" viewBox="0 0 ${cols * gridSize} ${rows * gridSize}" xmlns="http://www.w3.org/2000/svg">
+    ${cells}
+  </svg>`;
+}
+function wireShapeEditorToggle(container, onToggle) {
+  const svg = container.querySelector(".shape-editor-svg");
+  if (!svg) return;
+  for (const rect of svg.querySelectorAll(".shape-cell")) {
+    rect.addEventListener("click", () => {
+      onToggle(Number(rect.dataset.cx), Number(rect.dataset.cy));
+    });
+  }
+}
+function applyShapeType(room, type) {
+  if (type === "custom") {
+    room.shape = { type: "custom", params: { cells: cellsFromRoom(room) } };
+    return;
+  }
+  const effective = smallRoomWarningApplies(type, room.w, room.h) ? "rect" : type;
+  room.shape = { type: effective, params: defaultParamsFor(effective) };
+}
+function applyShapeParam(room, value) {
+  if (!room.shape) return;
+  const def = SHAPE_TYPES.find((s) => s.type === room.shape.type);
+  if (!def?.param) return;
+  room.shape = { type: room.shape.type, params: { [def.param.key]: value } };
+}
+function applySizeDelta(room, dungeon, dim, delta) {
+  if (room.shape?.type === "custom") return;
+  const max = dim === "w" ? dungeon.width - room.x : dungeon.height - room.y;
+  const next = Math.max(1, Math.min(max, room[dim] + delta));
+  if (next === room[dim]) return;
+  room[dim] = next;
+  room.cx = room.x + room.w / 2;
+  room.cy = room.y + room.h / 2;
+  const currentType = room.shape?.type ?? "rect";
+  if (smallRoomWarningApplies(currentType, room.w, room.h)) {
+    room.shape = { type: "rect", params: {} };
+  }
+}
+function applyCustomToggle(room, x, y) {
+  room.shape.params.cells = toggleCustomCell(room.shape.params.cells, room, x, y);
+  const bounds = room.shape.params.cells.reduce(
+    (acc, [dx, dy]) => ({
+      minX: Math.min(acc.minX, dx),
+      minY: Math.min(acc.minY, dy),
+      maxX: Math.max(acc.maxX, dx),
+      maxY: Math.max(acc.maxY, dy)
+    }),
+    { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+  );
+  room.x += bounds.minX;
+  room.y += bounds.minY;
+  room.w = bounds.maxX - bounds.minX + 1;
+  room.h = bounds.maxY - bounds.minY + 1;
+  room.shape.params.cells = room.shape.params.cells.map(([dx, dy]) => [dx - bounds.minX, dy - bounds.minY]);
+  room.cx = room.x + room.w / 2;
+  room.cy = room.y + room.h / 2;
+}
+var CELL_PADDING, SHAPE_TYPES;
+var init_shape_editor = __esm({
+  "../room-shape-ui/src/shape-editor.js"() {
+    init_pipeline();
+    CELL_PADDING = 3;
+    SHAPE_TYPES = [
+      { type: "rect", label: "Ret\xE2ngulo", param: null },
+      {
+        type: "l",
+        label: "L",
+        param: {
+          key: "corner",
+          label: "Canto",
+          options: [
+            { value: "nw", label: "Noroeste" },
+            { value: "ne", label: "Nordeste" },
+            { value: "sw", label: "Sudoeste" },
+            { value: "se", label: "Sudeste" }
+          ]
+        }
+      },
+      { type: "cross", label: "Cruz", param: null },
+      { type: "circle", label: "C\xEDrculo", param: null },
+      {
+        type: "triangle",
+        label: "Tri\xE2ngulo",
+        param: {
+          key: "orientation",
+          label: "Orienta\xE7\xE3o",
+          options: [
+            { value: "up", label: "Cima" },
+            { value: "down", label: "Baixo" },
+            { value: "left", label: "Esquerda" },
+            { value: "right", label: "Direita" }
+          ]
+        }
+      },
+      { type: "custom", label: "Come\xE7ar do zero (custom)", param: null }
+    ];
+  }
+});
+
+// src/shared/room-editor-context.js
+function groupRoomsByFloor(rooms, areas, selectedRoomId) {
+  const areaByRoomId = new Map(areas.map((a) => [a.roomId, a]));
+  const byFloor = /* @__PURE__ */ new Map();
+  for (const room of rooms) {
+    if (!byFloor.has(room.floor)) byFloor.set(room.floor, []);
+    byFloor.get(room.floor).push(room);
+  }
+  return [...byFloor.entries()].sort((a, b) => a[0] - b[0]).map(([floor, floorRooms]) => ({
+    floor: floor + 1,
+    rooms: floorRooms.map((room) => ({
+      id: room.id,
+      label: areaByRoomId.get(room.id)?.label ?? String(room.id),
+      active: room.id === selectedRoomId
+    }))
+  }));
+}
+function buildWarningText(room, type) {
+  if (type === "custom" && isDisconnected(room.shape.params.cells)) {
+    return "C\xE9lulas desconectadas \u2014 pode gerar um corredor estranho at\xE9 aqui.";
+  }
+  if (smallRoomWarningApplies(type, room.w, room.h)) {
+    return `Formas L/cruz/c\xEDrculo/tri\xE2ngulo exigem lado >= 4; esta sala (${room.w}x${room.h}) vira ret\xE2ngulo.`;
+  }
+  return null;
+}
+function buildDetailContext(room) {
+  if (!room) return null;
+  const type = room.shape?.type ?? "rect";
+  const def = SHAPE_TYPES.find((s) => s.type === type);
+  const selectedParam = room.shape?.params?.[def?.param?.key] ?? "";
+  return {
+    roomId: room.id,
+    shapeTypes: SHAPE_TYPES.map((s) => ({ ...s, selected: s.type === type })),
+    selectedType: type,
+    hasParam: !!def?.param,
+    paramLabel: def?.param?.label ?? "",
+    paramOptions: (def?.param?.options ?? []).map((o) => ({ ...o, selected: o.value === selectedParam })),
+    w: room.w,
+    h: room.h,
+    sizeSteppersDisabled: type === "custom",
+    warning: buildWarningText(room, type)
+  };
+}
+var init_room_editor_context = __esm({
+  "src/shared/room-editor-context.js"() {
+    init_shape_editor();
+  }
+});
+
+// src/room-editor-app.js
+var room_editor_app_exports = {};
+__export(room_editor_app_exports, {
+  DungeonForgeRoomEditorApp: () => DungeonForgeRoomEditorApp
+});
+var ApplicationV2, HandlebarsApplicationMixin, ROOM_EDITOR_GRID_SIZE, DungeonForgeRoomEditorApp;
+var init_room_editor_app = __esm({
+  "src/room-editor-app.js"() {
+    init_shape_editor();
+    init_room_editor_context();
+    ({ ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api);
+    ROOM_EDITOR_GRID_SIZE = 24;
+    DungeonForgeRoomEditorApp = class _DungeonForgeRoomEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
+      static DEFAULT_OPTIONS = {
+        id: "dungeon-forge-room-editor",
+        window: { title: "Editar Salas", resizable: true },
+        position: { width: 640, height: 520 },
+        actions: {
+          selectRoom: _DungeonForgeRoomEditorApp.#onSelectRoom,
+          resizeW: _DungeonForgeRoomEditorApp.#onResizeW,
+          resizeH: _DungeonForgeRoomEditorApp.#onResizeH
+        }
+      };
+      static PARTS = {
+        roomList: { template: "modules/dungeon-forge/templates/room-editor-list.hbs" },
+        detail: { template: "modules/dungeon-forge/templates/room-editor-detail.hbs" }
+      };
+      constructor({ dungeon, onClose, ...options }) {
+        super(options);
+        this.dungeon = dungeon;
+        this.onClose = onClose;
+        this.selectedRoomId = dungeon.rooms[0]?.id ?? null;
+      }
+      #selectedRoom() {
+        return this.dungeon.rooms.find((r) => r.id === this.selectedRoomId) ?? null;
+      }
+      async _prepareContext() {
+        return {
+          roomsByFloor: groupRoomsByFloor(this.dungeon.rooms, this.dungeon.areas, this.selectedRoomId),
+          detail: buildDetailContext(this.#selectedRoom())
+        };
+      }
+      async _onRender() {
+        const room = this.#selectedRoom();
+        if (!room) return;
+        const typeSelect = this.element.querySelector("[data-shape-type-select]");
+        if (typeSelect && !typeSelect.dataset.listenerBound) {
+          typeSelect.dataset.listenerBound = "true";
+          typeSelect.addEventListener("change", async (event) => {
+            await this.#applyShapeTypeChange(room, event.target.value);
+          });
+        }
+        const paramSelect = this.element.querySelector("[data-shape-param-select]");
+        if (paramSelect && !paramSelect.dataset.listenerBound) {
+          paramSelect.dataset.listenerBound = "true";
+          paramSelect.addEventListener("change", async (event) => {
+            applyShapeParam(room, event.target.value);
+            await this.render();
+          });
+        }
+        const interactive = (room.shape?.type ?? "rect") === "custom";
+        const container = this.element.querySelector("[data-shape-editor]");
+        if (container) {
+          container.innerHTML = buildShapeEditorSVG(room, this.dungeon, ROOM_EDITOR_GRID_SIZE, interactive);
+          if (interactive) {
+            wireShapeEditorToggle(container, (x, y) => {
+              applyCustomToggle(room, x, y);
+              this.render().catch((error) => console.error("Dungeon Forge: room editor re-render failed", error));
+            });
+          }
+        }
+      }
+      async #applyShapeTypeChange(room, nextType) {
+        if (room.shape?.type === "custom" && nextType !== "custom") {
+          if (!window.confirm("Isso descarta os ajustes manuais desta sala. Continuar?")) {
+            await this.render();
+            return;
+          }
+        }
+        applyShapeType(room, nextType);
+        await this.render();
+      }
+      async close(options) {
+        const result = await super.close(options);
+        this.onClose?.();
+        return result;
+      }
+      static async #onSelectRoom(event, target) {
+        this.selectedRoomId = Number(target.dataset.roomId);
+        await this.render();
+      }
+      static async #onResizeW(event, target) {
+        const room = this.#selectedRoom();
+        if (!room) return;
+        applySizeDelta(room, this.dungeon, "w", Number(target.dataset.delta));
+        await this.render();
+      }
+      static async #onResizeH(event, target) {
+        const room = this.#selectedRoom();
+        if (!room) return;
+        applySizeDelta(room, this.dungeon, "h", Number(target.dataset.delta));
+        await this.render();
+      }
+    };
+  }
+});
+
+// src/preview-app.js
+var ApplicationV22, HandlebarsApplicationMixin2, DungeonForgePreviewApp;
+var init_preview_app = __esm({
+  "src/preview-app.js"() {
+    init_pipeline();
+    init_src();
+    init_v13();
+    init_config_form();
+    ({ ApplicationV2: ApplicationV22, HandlebarsApplicationMixin: HandlebarsApplicationMixin2 } = foundry.applications.api);
+    DungeonForgePreviewApp = class _DungeonForgePreviewApp extends HandlebarsApplicationMixin2(ApplicationV22) {
+      static DEFAULT_OPTIONS = {
+        id: "dungeon-forge-preview",
+        window: { title: "Pr\xE9-visualizar Masmorra", resizable: true },
+        position: { width: 560, height: 480 },
+        actions: {
+          reroll: _DungeonForgePreviewApp.#onReroll,
+          back: _DungeonForgePreviewApp.#onBack,
+          editRooms: _DungeonForgePreviewApp.#onEditRooms,
+          create: _DungeonForgePreviewApp.#onCreate
+        }
+      };
+      static PARTS = {
+        body: { template: "modules/dungeon-forge/templates/preview.hbs" }
+      };
+      constructor({ dungeon, config, ...options }) {
+        super(options);
+        this.dungeon = dungeon;
+        this.config = config;
+        this.floor = 0;
+        this.rerollCount = 0;
+        this.imageUrl = null;
+        this.renderToken = 0;
+      }
+      async _prepareContext() {
+        const floorOptions = Array.from({ length: this.dungeon.floors }, (_, i) => ({
+          value: i,
+          label: `Andar ${i + 1}`,
+          selected: i === this.floor
+        }));
+        return {
+          seed: this.config.seed,
+          showFloorSelector: this.dungeon.floors > 1,
+          floorOptions,
+          imageUrl: this.imageUrl
+        };
+      }
+      async _onRender() {
+        const token = ++this.renderToken;
+        const { blob } = await renderFloor(this.dungeon, this.floor, this.config.gridSize);
+        if (token === this.renderToken) {
+          if (this.imageUrl) URL.revokeObjectURL(this.imageUrl);
+          this.imageUrl = URL.createObjectURL(blob);
+          const img = this.element.querySelector("[data-preview-image]");
+          if (img) img.src = this.imageUrl;
+        }
+        const select = this.element.querySelector("[data-floor-select]");
+        if (select && !select.dataset.listenerBound) {
+          select.dataset.listenerBound = "true";
+          select.addEventListener("change", async (event) => {
+            this.floor = Number(event.target.value);
+            await this.render();
+          });
+        }
+      }
+      async close(options) {
+        if (this.imageUrl) {
+          URL.revokeObjectURL(this.imageUrl);
+          this.imageUrl = null;
+        }
+        return super.close(options);
+      }
+      static async #onReroll() {
+        this.rerollCount += 1;
+        this.config = { ...this.config, seed: nextRerollSeed(this.config.seed, this.rerollCount) };
+        this.dungeon = generateDungeon(this.config);
+        this.floor = 0;
+        await this.render();
+      }
+      static async #onBack() {
+        const { DungeonForgeConfigApp: DungeonForgeConfigApp2 } = await Promise.resolve().then(() => (init_config_app(), config_app_exports));
+        await this.close();
+        new DungeonForgeConfigApp2({ config: this.config }).render(true);
+      }
+      static async #onEditRooms() {
+        const { DungeonForgeRoomEditorApp: DungeonForgeRoomEditorApp2 } = await Promise.resolve().then(() => (init_room_editor_app(), room_editor_app_exports));
+        if (this.roomEditorApp && this.roomEditorApp.rendered) {
+          this.roomEditorApp.bringToFront();
+          return;
+        }
+        this.roomEditorApp = new DungeonForgeRoomEditorApp2({
+          dungeon: this.dungeon,
+          onClose: () => this.render()
+        });
+        this.roomEditorApp.render(true);
+      }
+      static async #onCreate() {
+        try {
+          const result = await emitV13(this.dungeon, this.config);
+          ui.notifications.info(`Dungeon Forge: criado "${result.journal.name}" com ${result.scenes.length} Scene(s).`);
+          await this.close();
+        } catch (error) {
+          ui.notifications.error(`Dungeon Forge: falha ao criar a masmorra \u2014 ${error.message}`);
+          console.error("Dungeon Forge: emitV13 failed", error);
+        }
+      }
+    };
+  }
+});
+
+// src/config-app.js
+var config_app_exports = {};
+__export(config_app_exports, {
+  DungeonForgeConfigApp: () => DungeonForgeConfigApp
+});
+var ApplicationV23, HandlebarsApplicationMixin3, DungeonForgeConfigApp;
+var init_config_app = __esm({
+  "src/config-app.js"() {
+    init_pipeline();
+    init_config_form();
+    init_preview_app();
+    ({ ApplicationV2: ApplicationV23, HandlebarsApplicationMixin: HandlebarsApplicationMixin3 } = foundry.applications.api);
+    DungeonForgeConfigApp = class _DungeonForgeConfigApp extends HandlebarsApplicationMixin3(ApplicationV23) {
+      static DEFAULT_OPTIONS = {
+        id: "dungeon-forge-config",
+        tag: "form",
+        window: { title: "Gerar Masmorra", resizable: true },
+        position: { width: 520, height: 480 },
+        form: { handler: _DungeonForgeConfigApp.#onSubmit, submitOnChange: false, closeOnSubmit: false }
+      };
+      static PARTS = {
+        tabs: { template: "modules/dungeon-forge/templates/config-tabs.hbs" },
+        general: { template: "modules/dungeon-forge/templates/config-general.hbs" },
+        rooms: { template: "modules/dungeon-forge/templates/config-rooms.hbs" },
+        corridors: { template: "modules/dungeon-forge/templates/config-corridors.hbs" },
+        stairs: { template: "modules/dungeon-forge/templates/config-stairs.hbs" },
+        key: { template: "modules/dungeon-forge/templates/config-key.hbs" },
+        footer: { template: "modules/dungeon-forge/templates/config-footer.hbs" }
+      };
+      static TABS = {
+        sheet: {
+          tabs: [
+            { id: "general", group: "sheet", label: "Geral" },
+            { id: "rooms", group: "sheet", label: "Salas" },
+            { id: "corridors", group: "sheet", label: "Corredores" },
+            { id: "stairs", group: "sheet", label: "Escadas" },
+            { id: "key", group: "sheet", label: "Chave" }
+          ],
+          initial: "general"
+        }
+      };
+      constructor({ config, ...options } = {}) {
+        super(options);
+        this.config = config ?? DEFAULT_CONFIG;
+      }
+      async _prepareContext() {
+        const activeTabId = this.tabGroups?.sheet ?? this.constructor.TABS.sheet.initial;
+        const tabs = Object.fromEntries(
+          this.constructor.TABS.sheet.tabs.map((tab) => {
+            const active = tab.id === activeTabId;
+            return [tab.id, { ...tab, active, cssClass: active ? "active" : "" }];
+          })
+        );
+        return {
+          tabs,
+          formData: formDataFromConfig(this.config),
+          shapeWeightTypes: SHAPE_WEIGHT_TYPES
+        };
+      }
+      static async #onSubmit(event, form, formData) {
+        const config = configFromFormData(formData.object);
+        const dungeon = generateDungeon(config);
+        await this.close();
+        new DungeonForgePreviewApp({ dungeon, config }).render(true);
+      }
+    };
+  }
+});
 
 // src/index.js
+init_pipeline();
+init_v13();
 async function generate(config) {
   if (config.target !== "v13") {
     throw new Error(`adapter-foundry: unsupported target "${config.target}" (only 'v13' implemented)`);
@@ -2338,6 +3218,20 @@ async function generate(config) {
 if (typeof Hooks !== "undefined") {
   Hooks.once("init", () => {
     game.modules.get("dungeon-forge").api = { generate };
+  });
+  Hooks.on("renderSceneDirectory", (app, html) => {
+    if (!game.user.isGM) return;
+    const actions = html.querySelector(".header-actions.action-buttons");
+    if (!actions || actions.querySelector(".dungeon-forge-generate")) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "dungeon-forge-generate";
+    button.innerHTML = '<i class="fas fa-dungeon"></i><span>Gerar Masmorra</span>';
+    button.addEventListener("click", async () => {
+      const { DungeonForgeConfigApp: DungeonForgeConfigApp2 } = await Promise.resolve().then(() => (init_config_app(), config_app_exports));
+      new DungeonForgeConfigApp2().render(true);
+    });
+    actions.appendChild(button);
   });
 }
 export {

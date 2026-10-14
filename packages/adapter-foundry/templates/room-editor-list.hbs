@@ -1,0 +1,12 @@
+<div class="room-editor-list">
+  {{#each roomsByFloor}}
+    <h3>Andar {{this.floor}}</h3>
+    <ul class="room-items">
+      {{#each this.rooms}}
+        <li class="room-item{{#if this.active}} active{{/if}}" data-action="selectRoom" data-room-id="{{this.id}}">
+          <span class="room-label">{{this.label}}</span>
+        </li>
+      {{/each}}
+    </ul>
+  {{/each}}
+</div>
